@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PCVH Studio — Proof-Carrying Verification Harness</title>
+  <style>
+    :root {
+      --bg: #0b101b;
+      --panel: #121a2a;
+      --panel-2: #182338;
+      --border: #253450;
+      --text: #e6eefc;
+      --muted: #8ea1c2;
+      --accent: #4f9cff;
+      --accent-2: #8b5cf6;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --err: #ef4444;
+      --code-bg: #080d17;
+      --mono: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+      --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    [data-theme="light"] {
+      --bg: #f3f6fb;
+      --panel: #ffffff;
+      --panel-2: #f8fafc;
+      --border: #d7e0ee;
+      --text: #0f172a;
+      --muted: #52637d;
+      --accent: #2563eb;
+      --accent-2: #7c3aed;
+      --ok: #15803d;
+      --warn: #b45309;
+      --err: #b91c1c;
+      --code-bg: #f1f5f9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 18px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+    .brand-dot {
+      width: 11px; height: 11px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 12px var(--accent);
+    }
+    .meta-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+    .pill.ok { color: var(--ok); border-color: rgba(34,197,94,.4); }
+    .pill.warn { color: var(--warn); border-color: rgba(245,158,11,.4); }
+    .pill.err { color: var(--err); border-color: rgba(239,68,68,.4); }
+    .pill.accent { color: var(--accent); border-color: rgba(79,156,255,.4); }
+
+    button {
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      transition: background .15s, border-color .15s, transform .05s;
+    }
+    button:hover { border-color: var(--accent); }
+    button:active { transform: translateY(1px); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.secondary { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      flex: 1;
+      min-height: 0;
+    }
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    aside {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 14px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .sidebar-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+    }
+    .proj-card {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .proj-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+    .proj-title { font-weight: 600; font-size: 13px; word-break: break-word; }
+    .proj-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .badge {
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px;
+      text-transform: uppercase; font-family: var(--mono);
+    }
+    .badge.VERIFIED { background: rgba(34,197,94,.16); color: var(--ok); }
+    .badge.REJECTED, .badge.CONFIG_ERROR { background: rgba(239,68,68,.16); color: var(--err); }
+    .badge.UNVERIFIED { background: rgba(245,158,11,.16); color: var(--warn); }
+    .badge.lang { background: rgba(79,156,255,.15); color: var(--accent); }
+    .badge.signed { background: rgba(139,92,246,.2); color: var(--accent-2); }
+
+    main {
+      padding: 16px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px;
+    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 1180px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-hdr {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--panel-2);
+    }
+    .card-body { padding: 12px 14px; }
+
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tab {
+      font-size: 12px; font-family: var(--mono); padding: 4px 9px; border-radius: 6px;
+      border: 1px solid transparent; background: transparent; color: var(--muted);
+    }
+    .tab.active { background: var(--panel); border-color: var(--accent); color: var(--text); }
+
+    .code-box {
+      background: var(--code-bg);
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.55;
+      max-height: 430px;
+      overflow: auto;
+      padding: 8px 0;
+    }
+    .code-line {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      padding: 0 12px 0 0;
+      cursor: pointer;
+    }
+    .code-line:hover { background: rgba(79,156,255,.1); }
+    .code-line.selected { background: rgba(79,156,255,.22); }
+    .ln {
+      text-align: right;
+      padding-right: 10px;
+      color: var(--muted);
+      user-select: none;
+      opacity: .75;
+    }
+    .src { white-space: pre; }
+
+    pre.infoview {
+      margin: 0;
+      padding: 10px 12px;
+      background: var(--code-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 12px;
+      white-space: pre-wrap;
+      max-height: 290px;
+      overflow: auto;
+    }
+    .checks-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .checks-table th, .checks-table td {
+      text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .checks-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+    .mono { font-family: var(--mono); font-size: 12px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .chip {
+      font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 6px;
+      background: var(--panel-2); border: 1px solid var(--border);
+    }
+    .job-log {
+      font-family: var(--mono); font-size: 12px; background: var(--code-bg);
+      border: 1px solid var(--border); border-radius: 8px; padding: 10px;
+      max-height: 170px; overflow: auto; white-space: pre-wrap;
+    }
+    textarea, input, select {
+      background: var(--code-bg); color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px; font-family: var(--mono); font-size: 12px; width: 100%;
+    }
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      display: none; align-items: center; justify-content: center; z-index: 40;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: 440px; max-width: 94vw; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px;
+    }
+    label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span>PCVH Studio</span>
+      <span class="pill accent">Zero-Trust Palomar Gate</span>
+    </div>
+    <div class="meta-pills">
+      <span id="pill-lean" class="pill">Lean: loading...</span>
+      <span id="pill-mem" class="pill">Commit: --</span>
+      <span id="pill-llm" class="pill">LLM: --</span>
+      <button id="btn-new-proj">+ New Project (pcvh init)</button>
+      <button id="btn-theme">Light</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <div class="sidebar-hdr">
+        <span>Blueprints &amp; Specs</span>
+        <button id="btn-refresh" style="padding:3px 8px;font-size:11px;">Refresh</button>
+      </div>
+      <div id="project-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </aside>
+
+    <main>
+      <div class="toolbar">
+        <div>
+          <div id="proj-heading" style="font-size:18px;font-weight:700;">Select a PCVH Project</div>
+          <div id="proj-sub" class="mono" style="color:var(--muted);margin-top:3px;"></div>
+        </div>
+        <div class="actions">
+          <button class="primary" onclick="triggerAction('verify')">Verify (Palomar Gate)</button>
+          <button class="secondary" onclick="triggerAction('prove')">Autonomous Prove</button>
+          <button onclick="triggerAction('diff-reprove')">Diff Re-Prove</button>
+          <button onclick="triggerAction('falsify')">Stage-2 Falsify</button>
+          <button onclick="triggerAction('pin')">Pin TCB</button>
+          <button onclick="signCurrentProject()">Sign (Ed25519)</button>
+        </div>
+      </div>
+
+      <div id="job-panel" class="card" style="display:none;">
+        <div class="card-hdr">
+          <span id="job-title">Job</span>
+          <span id="job-status" class="pill">running</span>
+        </div>
+        <div class="card-body">
+          <div id="job-logs" class="job-log"></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-hdr">
+            <div id="file-tabs" class="tabs"></div>
+            <span class="mono" style="color:var(--muted);font-size:11px;">Click any line for live Lean LSP goal</span>
+          </div>
+          <div id="code-viewer" class="code-box"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr">
+            <span>Live Lean 4 LSP Infoview (<span class="mono">$/lean/plainGoal</span>)</span>
+            <span id="lsp-pos" class="pill">idle</span>
+          </div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+            <pre id="lsp-goals" class="infoview">Click any line inside a .lean file to query live Lean 4 tactic goals and diagnostics.</pre>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;">Diagnostics</div>
+              <pre id="lsp-diags" class="infoview" style="max-height:110px;">(none)</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <span>Signed Proof Attestation Inspector</span>
+          <span id="att-verdict" class="badge UNVERIFIED">UNVERIFIED</span>
+        </div>
+        <div class="card-body" id="att-body">
+          <div style="color:var(--muted);font-size:13px;">No attestation yet. Run <strong>Verify (Palomar Gate)</strong> above.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="init-modal" class="modal-backdrop">
+    <div class="modal">
+      <div style="font-size:16px;font-weight:700;">Scaffold Multi-Language PCVH Project</div>
+      <div>
+        <label>Relative Directory (under workspace root)</label>
+        <input id="init-dir" placeholder="examples/my_rust_limiter" />
+      </div>
+      <div>
+        <label>Target Production Language</label>
+        <select id="init-lang">
+          <option value="rust">Rust (cargo test + differential binary)</option>
+          <option value="typescript">TypeScript (Node.js native TS / tsx)</option>
+          <option value="solidity">Solidity / Foundry (forge test + uint256 bridge)</option>
+          <option value="python">Python (target.py + differential bridge)</option>
+        </select>
+      </div>
+      <div>
+        <label>Formal Specification Template</label>
+        <select id="init-tmpl">
+          <option value="ratelimit">Token-Bucket Rate Limiter (5 invariants)</option>
+          <option value="vault">ERC-4626 Share Vault &amp; Constant-Product AMM (5 invariants)</option>
+          <option value="ledger">Double-Entry Atomic Transfer Core (4 invariants)</option>
+        </select>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+        <button onclick="closeInitModal()">Cancel</button>
+        <button class="primary" onclick="submitInit()">Create &amp; Pin TCB</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let overview = null;
+    let currentProj = null;
+    let currentDetail = null;
+    let activeFile = null;
+    let activeJobTimer = null;
+
+    function esc(s) {
+      return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    document.getElementById("btn-theme").onclick = () => {
+      const root = document.documentElement;
+      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      document.getElementById("btn-theme").textContent = next === "dark" ? "Light" : "Dark";
+    };
+    document.getElementById("btn-refresh").onclick = loadOverview;
+    document.getElementById("btn-new-proj").onclick = () => document.getElementById("init-modal").classList.add("open");
+    function closeInitModal() { document.getElementById("init-modal").classList.remove("open"); }
+
+    async function loadOverview() {
+      const resp = await fetch("/api/overview");
+      overview = await resp.json();
+
+      const leanPill = document.getElementById("pill-lean");
+      leanPill.textContent = overview.lean_bin ? "Lean 4.33.1 ready" : "Lean not found";
+      leanPill.className = "pill " + (overview.lean_bin ? "ok" : "err");
+
+      const memPill = document.getElementById("pill-mem");
+      memPill.textContent = overview.commit_avail_gb != null
+        ? `Commit free: ${overview.commit_avail_gb} GB (${overview.recommended_workers}w)`
+        : "Commit: n/a";
+
+      const configuredLLMs = (overview.llm_providers || []).filter(p => p.configured).map(p => p.provider);
+      document.getElementById("pill-llm").textContent = configuredLLMs.length
+        ? "LLM: " + configuredLLMs.join(",")
+        : "LLM: symbolic/local";
+
+      const list = document.getElementById("project-list");
+      list.innerHTML = "";
+      (overview.projects || []).forEach(p => {
+        const card = document.createElement("div");
+        card.className = "proj-card" + (currentProj === p.id ? " active" : "");
+        card.onclick = () => selectProject(p.id);
+        card.innerHTML = `
+          <div class="proj-title">${esc(p.name)}</div>
+          <div class="proj-row">
+            <span class="badge ${esc(p.verdict)}">${esc(p.verdict)}</span>
+            <span class="badge lang">${esc(p.language || "python")}</span>
+            ${p.signed ? '<span class="badge signed">Ed25519</span>' : ''}
+          </div>
+          <div class="mono" style="font-size:11px;color:var(--muted);">${esc(p.id)} &middot; ${p.verified_count || 0} thms</div>
+        `;
+        list.appendChild(card);
+      });
+
+      if (!currentProj && overview.projects && overview.projects.length > 0) {
+        selectProject(overview.projects[0].id);
+      }
+    }
+
+    async function selectProject(pid) {
+      currentProj = pid;
+      document.querySelectorAll(".proj-card").forEach((el, i) => {
+        el.classList.toggle("active", overview.projects[i]?.id === pid);
+      });
+      const resp = await fetch("/api/project?id=" + encodeURIComponent(pid));
+      currentDetail = await resp.json();
+      document.getElementById("proj-heading").textContent = currentDetail.name;
+      document.getElementById("proj-sub").textContent =
+        `${currentDetail.id} | lang=${currentDetail.language} | toolchain=${currentDetail.toolchain} | TCB=${currentDetail.tcb_ok ? "PINNED OK" : "UNPINNED/MODIFIED"}`;
+
+      const tabs = document.getElementById("file-tabs");
+      tabs.innerHTML = "";
+      const fileKeys = Object.keys(currentDetail.files || {});
+      if (!activeFile || !fileKeys.includes(activeFile)) activeFile = fileKeys[0];
+      fileKeys.forEach(k => {
+        const btn = document.createElement("button");
+        btn.className = "tab" + (k === activeFile ? " active" : "");
+        const isTcb = k === currentDetail.statement_rel || k === currentDetail.challenge_rel;
+        btn.textContent = (isTcb ? "🔒 " : "") + k;
+        btn.onclick = () => { activeFile = k; renderCode(); renderTabs(); };
+        tabs.appendChild(btn);
+      });
+      renderCode();
+      renderAttestation();
+    }
+
+    function renderTabs() {
+      const fileKeys = Object.keys(currentDetail.files || {});
+      document.querySelectorAll("#file-tabs .tab").forEach((b, i) => {
+        b.classList.toggle("active", fileKeys[i] === activeFile);
+      });
+    }
+
+    function renderCode() {
+      const box = document.getElementById("code-viewer");
+      const text = (currentDetail.files || {})[activeFile] || "";
+      const lines = text.split("\n");
+      box.innerHTML = "";
+      lines.forEach((line, idx) => {
+        const row = document.createElement("div");
+        row.className = "code-line";
+        row.innerHTML = `<span class="ln">${idx + 1}</span><span class="src">${esc(line)}</span>`;
+        row.onclick = () => {
+          box.querySelectorAll(".code-line.selected").forEach(x => x.classList.remove("selected"));
+          row.classList.add("selected");
+          if (activeFile.endsWith(".lean")) queryLSP(activeFile, idx + 1, 2);
+        };
+        box.appendChild(row);
+      });
+    }
+
+    async function queryLSP(relFile, line, col) {
+      const pos = document.getElementById("lsp-pos");
+      pos.textContent = `${relFile}:${line} querying...`;
+      pos.className = "pill warn";
+      document.getElementById("lsp-goals").textContent = "Querying live Lean 4.33.1 LSP...";
+      try {
+        const resp = await fetch("/api/lsp/goals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ project_id: currentProj, rel_file: relFile, line, col }),
+        });
+        const data = await resp.json();
+        pos.textContent = `${relFile}:${line}:${col}`;
+        pos.className = "pill ok";
+        document.getElementById("lsp-goals").textContent =
+          (data.goals && data.goals.length) ? data.goals.join("\n\n---\n\n") : "(no active tactic goal at this line)";
+        document.getElementById("lsp-diags").textContent =
+          (data.diagnostics && data.diagnostics.length)
+            ? data.diagnostics.map(d => `L${d.line}:${d.column} [${d.severity}] ${d.message}`).join("\n")
+            : "(0 diagnostics)";
+      } catch (e) {
+        pos.className = "pill err";
+        document.getElementById("lsp-goals").textContent = "LSP Error: " + e;
+      }
+    }
+
+    function renderAttestation() {
+      const att = currentDetail.attestation;
+      const badge = document.getElementById("att-verdict");
+      const body = document.getElementById("att-body");
+      if (!att) {
+        badge.className = "badge UNVERIFIED";
+        badge.textContent = "UNVERIFIED";
+        body.innerHTML = `<div style="color:var(--muted);font-size:13px;">No proof-attestation.json found. Click <strong>Verify (Palomar Gate)</strong>.</div>`;
+        return;
+      }
+      badge.className = "badge " + att.verdict;
+      badge.textContent = att.verdict + (att.signature_envelope ? " · Ed25519 SIGNED" : "");
+
+      const thmChips = (att.verified_theorems || []).map(t => `<span class="chip">✓ ${esc(t)}</span>`).join("");
+      const axChips = (att.axioms_used || []).map(a => `<span class="chip">${esc(a)}</span>`).join("");
+      const rows = Object.entries(att.checks || {}).map(([k, v]) =>
+        `<tr><td class="mono">${esc(k)}</td><td class="mono">${esc(v)}</td></tr>`
+      ).join("");
+
+      const sigBlock = att.signature_envelope
+        ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+             <div style="font-weight:600;font-size:13px;margin-bottom:6px;">Cryptographic Ed25519 DSSE Signature Verifier</div>
+             <div class="mono" style="color:var(--muted);margin-bottom:6px;">
+               keyid=${esc(att.signature_envelope.signatures?.[0]?.keyid)} | alg=${esc(att.signature_envelope.signatures?.[0]?.alg)}
+             </div>
+             <textarea id="sig-pub-pem" rows="3" placeholder="Paste Ed25519 Public Key PEM (-----BEGIN PUBLIC KEY-----...)"></textarea>
+             <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+               <button onclick="verifySignature()">Verify Ed25519 Signature</button>
+               <span id="sig-result" class="mono"></span>
+             </div>
+           </div>`
+        : "";
+
+      body.innerHTML = `
+        <div class="mono" style="color:var(--muted);margin-bottom:8px;">
+          Spec SHA-256: ${esc(att.spec_bundle_sha256)} &middot; Attestation SHA-256: ${esc(att.attestation_sha256)} &middot; ${att.duration_s}s
+        </div>
+        <div><strong style="font-size:12px;">Verified Theorems (${(att.verified_theorems || []).length}):</strong><div class="chips">${thmChips}</div></div>
+        <div style="margin-top:10px;"><strong style="font-size:12px;">Kernel Axioms Used:</strong><div class="chips">${axChips}</div></div>
+        <table class="checks-table" style="margin-top:12px;">
+          <thead><tr><th>Check Stage</th><th>Outcome</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        ${sigBlock}
+      `;
+      const box = document.getElementById("sig-pub-pem");
+      if (box && lastStudioPubKey && !box.value) box.value = lastStudioPubKey;
+    }
+
+    let lastStudioPubKey = "";
+
+    async function signCurrentProject() {
+      if (!currentProj) return;
+      const resp = await fetch("/api/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: currentProj }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) return alert("Sign failed: " + (data.error || resp.statusText));
+      lastStudioPubKey = data.public_key_pem || "";
+      await loadOverview();
+      await selectProject(currentProj);
+      const box = document.getElementById("sig-pub-pem");
+      if (box && lastStudioPubKey) box.value = lastStudioPubKey;
+    }
+
+    async function verifySignature() {
+      const pem = document.getElementById("sig-pub-pem").value.trim();
+      const out = document.getElementById("sig-result");
+      const resp = await fetch("/api/verify-sig", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: currentProj, public_key_pem: pem }),
+      });
+      const data = await resp.json();
+      out.textContent = data.ok ? `PASS (${data.algorithm}, key=${data.key_id})` : `FAIL: ${data.reason}`;
+      out.style.color = data.ok ? "var(--ok)" : "var(--err)";
+    }
+
+    async function triggerAction(action) {
+      if (!currentProj) return;
+      const resp = await fetch("/api/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: currentProj, action }),
+      });
+      const job = await resp.json();
+      showJob(job);
+      if (activeJobTimer) clearInterval(activeJobTimer);
+      activeJobTimer = setInterval(async () => {
+        const jr = await fetch("/api/job?id=" + encodeURIComponent(job.job_id));
+        const cur = await jr.json();
+        showJob(cur);
+        if (cur.status === "succeeded" || cur.status === "failed") {
+          clearInterval(activeJobTimer);
+          activeJobTimer = null;
+          await loadOverview();
+          await selectProject(currentProj);
+        }
+      }, 1200);
+    }
+
+    function showJob(job) {
+      document.getElementById("job-panel").style.display = "flex";
+      document.getElementById("job-title").textContent = `Job ${job.job_id} — ${job.action} (${job.project_id})`;
+      const st = document.getElementById("job-status");
+      st.textContent = `${job.status} (${job.duration_s}s)`;
+      st.className = "pill " + (job.status === "succeeded" ? "ok" : job.status === "failed" ? "err" : "warn");
+      const lines = [...(job.logs || [])];
+      if (job.error) lines.push("ERROR: " + job.error);
+      document.getElementById("job-logs").textContent = lines.join("\n");
+    }
+
+    async function submitInit() {
+      const dir = document.getElementById("init-dir").value.trim();
+      const language = document.getElementById("init-lang").value;
+      const template = document.getElementById("init-tmpl").value;
+      if (!dir) return alert("Enter a relative directory name.");
+      const resp = await fetch("/api/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dir, language, template }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) return alert("Scaffold failed: " + (data.error || resp.statusText));
+      closeInitModal();
+      await loadOverview();
+      await selectProject(dir.replace(/\\/g, "/"));
+    }
+
+    loadOverview();
+  </script>
+</body>
+</html>

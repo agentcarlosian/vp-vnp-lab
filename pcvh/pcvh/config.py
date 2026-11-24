@@ -33,6 +33,11 @@ class SpecConfig:
     max_token_budget_usd: float = 5.0
     auto_lake_shake: bool = True
     extra_tcb_files: List[str] = field(default_factory=list)
+    target_language: str = "python"
+    target_template: str = "custom"
+    enable_tree_search: bool = True
+    max_parallel_workers: int = 2
+    require_dual_kernel: bool = False
 
     @property
     def tcb_rel_paths(self) -> List[str]:
@@ -60,6 +65,8 @@ def load_spec_config(project_root: pathlib.Path) -> SpecConfig:
     loop = raw.get("agent_loop", {})
     conf = raw.get("conformance", {})
     fals = raw.get("falsification", {})
+    tgt = raw.get("target", {})
+    dk = raw.get("dual_kernel", {})
 
     return SpecConfig(
         project_root=root,
@@ -82,4 +89,9 @@ def load_spec_config(project_root: pathlib.Path) -> SpecConfig:
         max_token_budget_usd=float(loop.get("max_token_budget_usd", 5.0)),
         auto_lake_shake=bool(loop.get("auto_lake_shake", True)),
         extra_tcb_files=list(spec.get("extra_tcb_files", [])),
+        target_language=str(tgt.get("language", "python")),
+        target_template=str(tgt.get("template", "custom")),
+        enable_tree_search=bool(loop.get("enable_tree_search", True)),
+        max_parallel_workers=int(loop.get("max_parallel_workers", 2)),
+        require_dual_kernel=bool(dk.get("required", False)),
     )

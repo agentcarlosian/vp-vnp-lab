@@ -15,6 +15,8 @@ import time
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from ..config import SpecConfig
+from .crypto import sign_attestation_ed25519
+from .dual_kernel import run_dual_kernel_verification
 from .manifest import (
     TCB_SNAPSHOT_DIR,
     build_isolated_overlay_workspace,
@@ -24,6 +26,7 @@ from .static_audit import StaticAuditResult, scan_untrusted_lean_files
 
 
 def resolve_lean_bin(project_root: pathlib.Path, lean_bin: Optional[pathlib.Path] = None) -> pathlib.Path:
+    project_root = pathlib.Path(project_root).resolve()
     exe = "lake.exe" if os.name == "nt" else "lake"
     if lean_bin is not None and (lean_bin / exe).exists():
         return lean_bin
@@ -182,10 +185,11 @@ class GateResult:
     checks: Dict[str, str] = field(default_factory=dict)
     duration_s: float = 0.0
     attestation_sha256: str = ""
+    signature_envelope: Optional[Dict[str, object]] = None
     raw_logs: Dict[str, str] = field(default_factory=dict)
 
     def to_attestation_dict(self) -> Dict[str, object]:
-        body = {
+        body: Dict[str, object] = {
             "schema": "pcvh.attestation.v1",
             "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "spec_name": self.spec_name,
@@ -203,6 +207,8 @@ class GateResult:
         ).hexdigest()
         body["attestation_sha256"] = digest
         self.attestation_sha256 = digest
+        if self.signature_envelope is not None:
+            body["signature_envelope"] = self.signature_envelope
         return body
 
 
@@ -250,6 +256,9 @@ def run_palomar_gate(
     trusted_tcb_source: Optional[pathlib.Path] = None,
     run_conformance: bool = True,
     enforce_working_tree_tcb_match: bool = True,
+    require_dual_kernel: Optional[bool] = None,
+    sign_key_path: Optional[pathlib.Path] = None,
+    sign_key_id: Optional[str] = None,
     attestation_out: Optional[pathlib.Path] = None,
 ) -> GateResult:
     """Execute the full Zero-Trust Palomar Verification Gate against an untrusted candidate project."""
@@ -283,6 +292,10 @@ def run_palomar_gate(
 
     # 2. Construct isolated overlay workspace with immutable TCB files stamped on top
     tcb_src = trusted_tcb_source or (cfg.project_root / TCB_SNAPSHOT_DIR)
+    if not man.ok and not tcb_src.exists():
+        failures.append(
+            "TCB mismatch in working tree and no trusted .pcvh_tcb_snapshot exists to restore clean TCB."
+        )
     with tempfile.TemporaryDirectory(prefix="pcvh_gate_") as tmp:
         ws = pathlib.Path(tmp) / "workspace"
         try:
@@ -390,11 +403,23 @@ def run_palomar_gate(
                     f"Required non-vacuity witness theorem matching '*{cfg.nonvacuity_suffix}*' was not verified."
                 )
 
-        # 7. External independent kernel hook (`lean4export` + `nanoda` if present on host)
-        if shutil.which("lean4export") and shutil.which("nanoda"):
-            checks["external_second_kernel"] = "AVAILABLE (configured for CI)"
+        # 7. External independent second-kernel verification (`lean4export` + `nanoda` / Palomar `comparator`)
+        enforce_dk = cfg.require_dual_kernel if require_dual_kernel is None else require_dual_kernel
+        dk_res = run_dual_kernel_verification(
+            ws,
+            cfg,
+            lake_exe=lake_exe,
+            env=env,
+            require_dual_kernel=enforce_dk,
+        )
+        raw_logs["external_second_kernel"] = dk_res.raw_output
+        if dk_res.status == "PASS":
+            checks["external_second_kernel"] = f"PASS [{dk_res.backend}] ({dk_res.detail})"
+        elif dk_res.status == "SKIPPED_LOCAL":
+            checks["external_second_kernel"] = f"SKIPPED_LOCAL ({dk_res.detail})"
         else:
-            checks["external_second_kernel"] = "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; nanoda runs in Linux CI)"
+            checks["external_second_kernel"] = f"FAIL [{dk_res.backend}] ({dk_res.detail})"
+            failures.append(f"Independent second kernel failed: {dk_res.detail}")
 
         # 8. Optional Differential Conformance Bridge (Lean model <-> production implementation)
         if run_conformance and cfg.conformance_command:
@@ -423,6 +448,9 @@ def run_palomar_gate(
                 checks["differential_conformance"] = f"FAIL (rc={conf_proc.returncode})"
                 failures.append(f"Differential conformance failed: {conf_out.strip()[-600:]}")
 
+    if sign_key_path is not None:
+        checks["cryptographic_signature"] = "PENDING (Ed25519-DSSEv1)"
+
     verdict = "VERIFIED" if not failures else "REJECTED"
     result = GateResult(
         verdict=verdict,
@@ -437,11 +465,18 @@ def run_palomar_gate(
         raw_logs=raw_logs,
     )
 
-    if attestation_out is not None:
+    if sign_key_path is not None:
+        key_bytes = pathlib.Path(sign_key_path).read_bytes()
+        result.checks["cryptographic_signature"] = "PASS (Ed25519-DSSEv1 signed)"
         att = result.to_attestation_dict()
+        att = sign_attestation_ed25519(att, key_bytes, key_id=sign_key_id)
+        result.attestation_sha256 = str(att["attestation_sha256"])
+        result.signature_envelope = att.get("signature_envelope")  # type: ignore[assignment]
+    else:
+        att = result.to_attestation_dict()
+
+    if attestation_out is not None:
         attestation_out.parent.mkdir(parents=True, exist_ok=True)
         attestation_out.write_text(json.dumps(att, indent=2) + "\n", encoding="utf-8")
-    else:
-        result.to_attestation_dict()
 
     return result

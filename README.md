@@ -13,9 +13,9 @@ Independent Lean 4.33.1 verification, formalization of **Remark N.6**, computati
 | Component | Result | Details |
 | --- | --- | --- |
 | **`vp-vnp` full local build + Remark N.6** | **323 / 323 modules + `remarkN6_unconditional` VERIFIED** | All 5 headline `Solution.*` theorems + our 891-line division-free Samuelson–Berkowitz formalization [`remark-n6-lean/RemarkN6.lean`](./remark-n6-lean/RemarkN6.lean) verified in Lean 4.33.1 on `[propext, Classical.choice, Quot.sound]` only (0 `sorry`, 0 warnings). |
-| **`pcvh` (Phases 1–5)** | **25 / 25 tests passing** | 12/12 red-team cheats blocked, 5/5 real-world blueprints Palomar-verified with differential conformance (`1000/1000`, `500/500`, `500/500`, `1000/1000`), live 40-invariant eval benchmark **32/32 sound proved + 8/8 buggy caught (0% false acceptance)** in `33.5s`. |
+| **`pcvh` (Phases 1–6)** | **36 / 36 tests passing** | 12/12 red-team cheats + guillemet/metaprogramming anti-cheat, 5/5 blueprints Palomar-verified, Rust/TypeScript/Solidity/Python adapters (`pcvh init`), Anthropic/OpenAI/Ollama LLMs + best-first LSP tree search + parallel proving, `lean4export`+`nanoda` dual-kernel CI & Ed25519 DSSE signing, interactive `pcvh studio` Web UI, 40/40 live eval benchmark. |
 | **`lean-build-orchestrator`** | **8 / 8 tests passing** | Live Lean 4.33.1 build + native `lake shake --fix` + automatic `.olean` environment fallback + rollback safety. |
-| **`quantum-cat0-checker`** | **8 / 8 tests passing** | Certified exact $\sqrt{2}\times$ on $C_4$, $\sqrt{3}\times$ on $Q_3$, and strict 3-way cone separation $\rho_{\mathrm{Euc}} = 1.5 < \rho_{\mathrm{CAT(0)}} = 2.0 < \rho_{\mathrm{Metric}} = 8/3$ on $K_{2,3}$. |
+| **`quantum-cat0-checker`** | **13 / 13 tests passing** | Exact $\sqrt{2}\times$ on $C_4$, $\sqrt{3}\times$ on $Q_3$, strict 3-way cone separations on $K_{2,3}$ & $3\times 3$ planar grid, permutation-invariant GHZ bounds, and `qcat0 certify` exact `Fraction`-verified Farkas dual certificates + standalone Lean 4 proof export. |
 | **Research experiments (`exp04`–`exp09`)** | **6 / 6 scripts passing** | Meixner–Frobenius crossing identity, Prop. E.1/M.2 `#SAT -> PERM/HC` compilers, Grassmannian Möbius contraction bound on $\mathrm{Mat}_\mu(\mathbb{F}_2)$, flat-case hub optimizer, $\mathrm{SL}_3(\mathbb{F}_2[s]/(s^2))$ coset tower, PIT & CAT(0) calculations. |
 
 ---
@@ -24,10 +24,10 @@ Independent Lean 4.33.1 verification, formalization of **Remark N.6**, computati
 
 ```text
 vp-vnp-lab/
-├── pcvh/                         # Proof-Carrying Verification Harness (Phases 1–5, 5 blueprints, 40-task eval)
-│   ├── pcvh/                     #   tcb/ (Palomar gate), runtime/ (LSP), falsify/, agents/, ci/, eval/, cat0_bridge.py
+├── pcvh/                         # Proof-Carrying Verification Harness (Phases 1–6, 5 blueprints, 40-task eval, Web Studio)
+│   ├── pcvh/                     #   tcb/ (Palomar + dual-kernel + Ed25519), adapters/, runtime/ (LSP), falsify/, agents/ (LLMs + tree search), ci/, eval/, studio/
 │   ├── blueprints/               #   01_erc4626_vault, 02_bft_consensus, 03_ssa_peephole_opt, 04_double_entry_ledger, 05_cat0_certificate
-│   ├── tests/                    #   25 live Lean 4.33.1 tests (12 red-team attacks, Phase 2–5, CAT(0) bridge)
+│   ├── tests/                    #   36 live Lean 4.33.1 tests (12 red-team attacks, Phase 2–6, Rust/TS/Solidity adapters, Web Studio)
 │   ├── eval_dashboard.html       #   Interactive 40-invariant benchmark dashboard
 │   └── eval_results_40.json      #   Machine-readable benchmark results
 ├── lean-build-orchestrator/      # Windows/low-RAM Lean 4 commit-aware scheduler & lake shake minimizer (`lean-orch`)
@@ -74,6 +74,7 @@ python -m pytest -v tests/
 cd quantum-cat0-checker
 python -m quantum_cat0 list
 python -m quantum_cat0 check K23_bipartite
+python -m quantum_cat0 certify hypercube_Q3 --lean-out Q3Cert.lean
 python -m quantum_cat0 benchmark
 python -m pytest -v tests/
 ```

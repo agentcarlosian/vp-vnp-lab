@@ -1,6 +1,6 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-24T11:13:21.592794+00:00",
+  "timestamp_utc": "2026-11-24T17:43:27.911516+00:00",
   "spec_name": "blueprint04-double-entry-ledger",
   "verdict": "VERIFIED",
   "spec_bundle_sha256": "16512e620b9e97db6538964f50f11652bc4fbf5f62dfc784fabd4cdf354ffb98",
@@ -24,10 +24,10 @@
     "lean_kernel_build": "PASS",
     "palomar_comparator": "PASS (6 theorems DefEq, axioms=['Quot.sound', 'propext'])",
     "nonvacuity_witness": "PASS",
-    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; nanoda runs in Linux CI)",
+    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; Missing independent kernel tools: lean4export, nanoda_bin (enforced in Linux CI dual-kernel job))",
     "differential_conformance": "PASS (1000/1000 differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 13.496,
-  "attestation_sha256": "7767b41c2ce51ebd597d58bf143b4c96eecedc100ec2e4c45d631c6b721fde57"
+  "duration_s": 6.114,
+  "attestation_sha256": "02baa2ba6540eafa395527626e9860179e405cff45403e28540f821252b612fe"
 }

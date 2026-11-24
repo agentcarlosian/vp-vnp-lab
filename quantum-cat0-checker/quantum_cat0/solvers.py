@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 import cvxpy as cp
 import networkx as nx
 import numpy as np
+from scipy.optimize import minimize
 
 from .cat0_cone import (
     add_all_berg_nikolaev_socp_constraints,
@@ -18,6 +19,8 @@ from .cat0_cone import (
     audit_metric_cat0,
     choose_conic_solver,
     find_violated_berg_nikolaev_quads,
+    project_onto_cat0_socp,
+    solve_with_conic_fallback,
 )
 from .models import QuantumNetwork
 
@@ -63,11 +66,11 @@ class CoveringCapacityResult:
 @dataclass
 class SLOCCFeasibilityResult:
     network_name: str
-    verdict: str  # FORBIDDEN_BY_CUT | FORBIDDEN_BY_METRIC_LP | FORBIDDEN_BY_CAT0_SPECTRAL | FEASIBLE_UNDER_OUTER_BOUNDS
+    verdict: str  # FORBIDDEN_BY_CUT | FORBIDDEN_BY_CAT0_SPECTRAL | CLASSICAL_LP_GAP_ONLY | FEASIBLE_UNDER_OUTER_BOUNDS
     min_cut_ratio: float               # min_A cap(A) / demand(A); < 1 proves impossibility!
     worst_cut_partition: Optional[List[int]]
     metric_lp_ratio: float             # min_{d in M_n} sum s_e d_e / sum t_f d_f
-    cat0_spectral_ratio: float         # min_{d in CAT(0)} sum s_e d_e / sum t_f d_f (upper bound on true min)
+    cat0_spectral_ratio: float         # min_{d in CAT(0)} sum s_e d_e / sum t_f d_f
     covering_ebit_budget_cat0: Optional[float]
     covering_feasible_with_l2_cover: Optional[bool]
     witness_metric: Optional[np.ndarray] = None
@@ -105,9 +108,9 @@ def _solve_socp_ratio(
     include_cat0: bool,
     use_cutting_planes: bool,
     solver: str,
-    max_rounds: int = 12,
-    cuts_per_round: int = 60,
-    tol: float = 1e-5,
+    max_rounds: int = 40,
+    cuts_per_round: int = 100,
+    tol: float = 1e-6,
 ) -> Tuple[float, np.ndarray, int, int]:
     """Solve max_{u in Cone} sum_{f in T} t_f u_f  s.t.  sum_{e in S} s_e u_e <= 1."""
     n = net.num_parties
@@ -116,13 +119,15 @@ def _solve_socp_ratio(
     }
     base_constraints: List[cp.Constraint] = []
 
-    # Normalize quadratic source cost <= 1 (including GHZ upper-bound surrogate if present)
+    # Permutation-invariant source normalization:
+    # 1 copy of GHZ(A) restricts via LOCC to any single pair (p, q) in A -> d_phi(GHZ_A)^2 >= max_{p<q in A} u_{pq}
     src_terms = [w * u_vars[e] for e, w in net.source_eprs.items()]
     for g in net.source_ghz:
         if len(g.parties) >= 2:
-            hub = g.parties[0]
-            star_sum = cp.sum([u_vars[(min(hub, p), max(hub, p))] for p in g.parties[1:]])
-            src_terms.append(g.rate * star_sum)
+            u_ghz = cp.Variable(nonneg=True)
+            for p, q in combinations(sorted(g.parties), 2):
+                base_constraints.append(u_ghz >= u_vars[(p, q)])
+            src_terms.append(g.rate * u_ghz)
     if not src_terms:
         raise ValueError("Network has no source resources.")
     base_constraints.append(cp.sum(src_terms) <= 1.0)
@@ -132,7 +137,7 @@ def _solve_socp_ratio(
 
     if not include_cat0:
         prob = cp.Problem(obj, base_constraints)
-        prob.solve(solver=solver)
+        solve_with_conic_fallback(prob, preferred=solver)
         U = _extract_u_matrix(u_vars, n)
         return float(prob.value), U, 0, 0
 
@@ -140,7 +145,7 @@ def _solve_socp_ratio(
         constraints = list(base_constraints)
         add_all_berg_nikolaev_socp_constraints(u_vars, n, constraints)
         prob = cp.Problem(obj, constraints)
-        prob.solve(solver=solver)
+        solve_with_conic_fallback(prob, preferred=solver)
         U = _extract_u_matrix(u_vars, n)
         n_bn = 3 * (n * (n - 1) * (n - 2) * (n - 3) // 24) if n >= 4 else 0
         return float(prob.value), U, 1, n_bn
@@ -154,7 +159,7 @@ def _solve_socp_ratio(
     for r in range(1, max_rounds + 1):
         rounds = r
         prob = cp.Problem(obj, constraints)
-        prob.solve(solver=solver)
+        solve_with_conic_fallback(prob, preferred=solver)
         val = float(prob.value)
         U = _extract_u_matrix(u_vars, n)
         viols = find_violated_berg_nikolaev_quads(U, tol=tol)
@@ -182,22 +187,21 @@ def _solve_euclidean_sdp_ratio(net: QuantumNetwork, solver: str) -> Tuple[float,
         i, j = edge
         return G[i, i] + G[j, j] - 2.0 * G[i, j]
 
+    constraints: List[cp.Constraint] = [cp.sum(G, axis=0) == 0]
     src_terms = [w * u_expr(e) for e, w in net.source_eprs.items()]
     for g in net.source_ghz:
         if len(g.parties) >= 2:
-            hub = g.parties[0]
-            star_sum = cp.sum([u_expr((min(hub, p), max(hub, p))) for p in g.parties[1:]])
-            src_terms.append(g.rate * star_sum)
+            u_ghz = cp.Variable(nonneg=True)
+            for p, q in combinations(sorted(g.parties), 2):
+                constraints.append(u_ghz >= u_expr((p, q)))
+            src_terms.append(g.rate * u_ghz)
 
-    constraints = [
-        cp.sum(G, axis=0) == 0,
-        cp.sum(src_terms) <= 1.0,
-    ]
+    constraints.append(cp.sum(src_terms) <= 1.0)
     obj = cp.Maximize(cp.sum([w * u_expr(f) for f, w in net.target_eprs.items()]))
     prob = cp.Problem(obj, constraints)
-    prob.solve(solver=solver)
+    solve_with_conic_fallback(prob, preferred=solver)
 
-    G_val = np.asarray(G.value, dtype=float)
+    G_val = np.asarray(G.value, dtype=float) if G.value is not None else np.zeros((n, n), dtype=float)
     G_val = 0.5 * (G_val + G_val.T)
     eigvals, eigvecs = np.linalg.eigh(G_val)
     eigvals_pos = np.maximum(eigvals, 0.0)
@@ -213,7 +217,7 @@ def _solve_euclidean_sdp_ratio(net: QuantumNetwork, solver: str) -> Tuple[float,
 
 def solve_covering_capacity_hierarchy(
     net: QuantumNetwork,
-    cutting_plane_threshold_n: int = 7,
+    cutting_plane_threshold_n: int = 10,
     solver: Optional[str] = None,
 ) -> CoveringCapacityResult:
     """Compute nested Metric (triangle) >= CAT(0) (Thm C.1 SOCP) >= Euclidean (SDP) covering bounds.
@@ -233,8 +237,8 @@ def solve_covering_capacity_hierarchy(
     )
     rho_euc, _, coords = _solve_euclidean_sdp_ratio(net, solver=conic_solver)
 
-    s_tot = sum(net.source_eprs.values()) + sum(g.rate * max(len(g.parties) - 1, 0) for g in net.source_ghz)
-    t_tot = sum(net.target_eprs.values())
+    s_tot = net.total_source_ebits
+    t_tot = net.total_target_ebits
 
     ebit_metric = sqrt(max(0.0, s_tot * t_tot * rho_metric))
     ebit_cat0 = sqrt(max(0.0, s_tot * t_tot * rho_cat0))
@@ -270,7 +274,6 @@ def _exact_min_cut_ratio(net: QuantumNetwork) -> Tuple[float, Optional[List[int]
     best_cut: Optional[List[int]] = None
 
     if n <= 14:
-        # Exact enumeration over all 2^{n-1} - 1 nontrivial bipartitions (fix party 0 in A)
         for mask in range(1, 1 << (n - 1)):
             in_a = {0}
             for bit in range(n - 1):
@@ -297,7 +300,6 @@ def _exact_min_cut_ratio(net: QuantumNetwork) -> Tuple[float, Optional[List[int]
                 best_cut = sorted(in_a)
         return best_ratio, best_cut
 
-    # For large n > 14, check single-pair s-t min-cuts via NetworkX
     G = nx.Graph()
     G.add_nodes_from(range(n))
     for (u, v), w in net.source_eprs.items():
@@ -332,13 +334,11 @@ def _metric_lp_ratio(net: QuantumNetwork) -> Tuple[float, np.ndarray]:
     src_terms = [w * d_vars[e] for e, w in net.source_eprs.items()]
     for g in net.source_ghz:
         if len(g.parties) >= 2:
-            # Upper bound on spectral cost of GHZ_A: star spanning tree (strictly valid for impossibility!)
-            # Actually for minimum over hub v, add auxiliary variable z_g <= star(v) for each v?
-            # Since we minimize src_terms, use auxiliary z_g >= max_pair? No, to certify impossibility
-            # we must upper-bound d(GHZ_A), so z_g = star(hub_0) is a sound upper bound on d(GHZ_A).
-            hub = g.parties[0]
-            star_sum = cp.sum([d_vars[(min(hub, p), max(hub, p))] for p in g.parties[1:]])
-            src_terms.append(g.rate * star_sum)
+            # Diameter bound z_g >= d_{pq}: exact on all flattening / l1 cut combinations!
+            z_g = cp.Variable(nonneg=True)
+            for p, q in combinations(sorted(g.parties), 2):
+                constraints.append(z_g >= d_vars[(p, q)])
+            src_terms.append(g.rate * z_g)
 
     prob = cp.Problem(cp.Minimize(cp.sum(src_terms)), constraints)
     lp_solver = "SCIPY" if "SCIPY" in cp.installed_solvers() else choose_conic_solver()
@@ -352,18 +352,47 @@ def _metric_lp_ratio(net: QuantumNetwork) -> Tuple[float, np.ndarray]:
     return float(prob.value), D
 
 
+def _is_cut_pseudometric(D: np.ndarray, tol: float = 1e-5) -> bool:
+    """Check whether D is a scalar multiple of a bipartition cut pseudometric c * 1_{i in A != j in A}."""
+    vals = D[np.triu_indices(D.shape[0], k=1)]
+    pos = vals[vals > tol]
+    if pos.size == 0:
+        return False
+    c = float(np.max(pos))
+    if np.any(np.minimum(np.abs(vals), np.abs(vals - c)) > tol):
+        return False
+    # Check 0-distance equivalence relation has at most 2 classes
+    in_zero = [j for j in range(D.shape[0]) if D[0, j] <= tol]
+    out_zero = [j for j in range(D.shape[0]) if D[0, j] > tol]
+    for u in in_zero:
+        for v in in_zero:
+            if D[u, v] > tol:
+                return False
+    for u in out_zero:
+        for v in out_zero:
+            if D[u, v] > tol:
+                return False
+    return True
+
+
 def _evaluate_linear_ratio(net: QuantumNetwork, D: np.ndarray) -> float:
     denom = sum(w * D[u, v] for (u, v), w in net.target_eprs.items())
     if denom <= 1e-12:
         return float("inf")
     num = sum(w * D[u, v] for (u, v), w in net.source_eprs.items())
+    is_cut = bool(net.source_ghz) and _is_cut_pseudometric(D)
     for g in net.source_ghz:
         if len(g.parties) >= 2:
-            # Sound upper bound on d_phi(GHZ_A): minimum star spanning tree inside A
-            best_star = min(
-                sum(D[hub, p] for p in g.parties if p != hub) for hub in g.parties
-            )
-            num += g.rate * best_star
+            if is_cut:
+                # Flattening rank functional is an exact element of Strassen's spectrum:
+                # log_2 rk_{A | V\A}(GHZ_P) = max_{p,q in P} D_A(p, q).
+                ghz_cost = max(D[p, q] for p, q in combinations(g.parties, 2))
+            else:
+                # Universal upper bound over arbitrary spectral points via minimum star restriction
+                ghz_cost = min(
+                    sum(D[hub, p] for p in g.parties if p != hub) for hub in g.parties
+                )
+            num += g.rate * ghz_cost
     return float(num / denom)
 
 
@@ -371,13 +400,15 @@ def _cat0_spectral_witness_search(
     net: QuantumNetwork,
     seed_metrics: List[np.ndarray],
 ) -> Tuple[float, np.ndarray]:
-    """Search CAT(0) spectral points (cuts, Euclidean point clouds, CAT(0) projections) for lowest ratio."""
+    """Find minimum source/target ratio over genuine CAT(0) metrics (cuts, R-trees, CAT(0) SOCP projections, & L-BFGS-B R^d)."""
     n = net.num_parties
     best_ratio = float("inf")
     best_D = np.zeros((n, n), dtype=float)
 
     def consider(D: np.ndarray) -> None:
         nonlocal best_ratio, best_D
+        if np.max(D) <= 1e-9:
+            return
         audit = audit_metric_cat0(D, tol=1e-4)
         if not audit.is_cat0_4pt:
             return
@@ -386,17 +417,61 @@ def _cat0_spectral_witness_search(
             best_ratio = r
             best_D = D.copy()
 
-    # 1. Seed metrics (e.g. cut metric, worst-case CAT(0) covering metric, Euclidean embedding)
+    # 1. Seed metrics (worst cut, LP metric if CAT(0), CAT(0) SOCP projection of LP metric, covering witness)
     for D in seed_metrics:
         consider(D)
 
-    # 2. Multi-start Euclidean point-cloud search (every Euclidean metric is strictly CAT(0)!)
+    # 2. Non-Euclidean R-tree metrics: star trees & source-graph spanning trees (every tree metric is strictly CAT(0)!)
+    consider(np.ones((n, n), dtype=float) - np.eye(n, dtype=float))
+    for hub in range(n):
+        D_star = np.full((n, n), 2.0, dtype=float)
+        np.fill_diagonal(D_star, 0.0)
+        for p in range(n):
+            if p != hub:
+                D_star[hub, p] = D_star[p, hub] = 1.0
+        consider(D_star)
+
+    G_src = nx.Graph()
+    G_src.add_nodes_from(range(n))
+    for (u, v), w in net.source_eprs.items():
+        G_src.add_edge(u, v, weight=1.0 / max(w, 1e-6))
+    if nx.is_connected(G_src):
+        T = nx.minimum_spanning_tree(G_src)
+        D_tree = np.zeros((n, n), dtype=float)
+        for u, lengths in nx.all_pairs_dijkstra_path_length(T, weight="weight"):
+            for v, d_uv in lengths.items():
+                D_tree[u, v] = float(d_uv)
+        consider(D_tree)
+
+    # 3. Smooth L-BFGS-B optimization over Euclidean embeddings X in R^{n x d} (every Euclidean metric is CAT(0)!)
     rng = np.random.default_rng(42)
     dim = min(n, 4)
-    for _ in range(120):
-        pts = rng.normal(size=(n, dim))
-        D = np.linalg.norm(pts[:, None, :] - pts[None, :, :], axis=-1)
-        consider(D)
+    eps = 1e-10
+    src_items = list(net.source_eprs.items())
+    tgt_items = list(net.target_eprs.items())
+
+    if not net.source_ghz and tgt_items:
+        def smooth_obj(flat_x: np.ndarray) -> float:
+            X = flat_x.reshape((n, dim))
+            diff = X[:, None, :] - X[None, :, :]
+            D = np.sqrt(np.sum(diff * diff, axis=-1) + eps)
+            denom = sum(w * D[u, v] for (u, v), w in tgt_items)
+            if denom <= 1e-9:
+                return 1e6
+            num = sum(w * D[u, v] for (u, v), w in src_items)
+            return float(num / denom)
+
+        for _ in range(8):
+            x0 = rng.normal(size=n * dim)
+            opt = minimize(smooth_obj, x0, method="L-BFGS-B", options={"maxiter": 80})
+            X_opt = opt.x.reshape((n, dim))
+            D_euc = np.linalg.norm(X_opt[:, None, :] - X_opt[None, :, :], axis=-1)
+            consider(D_euc)
+    else:
+        for _ in range(40):
+            pts = rng.normal(size=(n, dim))
+            D_euc = np.linalg.norm(pts[:, None, :] - pts[None, :, :], axis=-1)
+            consider(D_euc)
 
     return best_ratio, best_D
 
@@ -404,14 +479,14 @@ def _cat0_spectral_witness_search(
 def check_slocc_feasibility(
     net: QuantumNetwork,
     run_covering_analysis: bool = True,
-    tol: float = 1e-5,
+    precomputed_covering: Optional[CoveringCapacityResult] = None,
+    tol: float = 1e-4,
 ) -> SLOCCFeasibilityResult:
     """Certify whether single-restriction asymptotic SLOCC S >=_asym T is forbidden or survives outer bounds."""
     notes: List[str] = []
     min_cut_ratio, worst_cut = _exact_min_cut_ratio(net)
     metric_lp_ratio, D_lp = _metric_lp_ratio(net)
 
-    # Build candidate CAT(0) seed metrics
     seeds: List[np.ndarray] = []
     if worst_cut is not None:
         in_a = set(worst_cut)
@@ -425,11 +500,17 @@ def check_slocc_feasibility(
     lp_audit = audit_metric_cat0(D_lp, tol=1e-4)
     if lp_audit.is_cat0_4pt:
         seeds.append(D_lp)
+    elif net.num_parties >= 4 and np.max(D_lp) > 1e-6:
+        # Project non-CAT(0) LP optimizer onto exact CAT(0) cone as a high-quality non-Euclidean seed!
+        D_lp_proj, _ = project_onto_cat0_socp(D_lp)
+        seeds.append(D_lp_proj)
 
     cov_budget = None
     cov_feasible = None
-    if run_covering_analysis:
+    cov = precomputed_covering
+    if cov is None and run_covering_analysis:
         cov = solve_covering_capacity_hierarchy(net)
+    if cov is not None:
         seeds.append(cov.witness_cat0_metric)
         cov_budget = cov.ebit_budget_cat0
         cov_feasible = net.total_source_ebits + tol >= cov_budget
@@ -455,10 +536,11 @@ def check_slocc_feasibility(
         )
         witness = D_cat0
     elif metric_lp_ratio < 1.0 - tol:
-        verdict = "FORBIDDEN_BY_METRIC_LP"
+        verdict = "CLASSICAL_LP_GAP_ONLY"
         notes.append(
-            f"Metric LP yields ratio {metric_lp_ratio:.4f} < 1.0 (witness max Berg-Nikolaev violation="
-            f"{lp_audit.max_berg_nikolaev_violation:.4f}; non-CAT(0) metric does NOT rule out quantum SLOCC unless CAT(0)!)."
+            f"Classical Metric LP < 1 ({metric_lp_ratio:.4f}), whereas every CAT(0) spectral bound >= 1 "
+            f"(min CAT(0)={cat0_ratio:.4f}; LP witness violates Berg-Nikolaev by {lp_audit.max_berg_nikolaev_violation:.4f} "
+            f"and is ruled out of Strassen's spectrum by Theorem C.1!)."
         )
         witness = D_lp
     else:

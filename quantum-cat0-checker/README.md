@@ -29,4 +29,8 @@ python -m quantum_cat0 check hypercube_Q3
 
 # Run the full multi-topology CVXPY SOCP/SDP benchmark table
 python -m quantum_cat0 benchmark
+
+# Extract exact rational Farkas dual certificate & standalone zero-sorry Lean 4 proof
+python -m quantum_cat0 certify hypercube_Q3 --lean-out Q3Cert.lean
+python -m quantum_cat0 certify K23_bipartite
 ```

@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from fractions import Fraction
 import math
+import os
 import pathlib
+import shutil
+import subprocess
 import sys
 
 import numpy as np
@@ -14,7 +18,8 @@ if str(PKG_ROOT) not in sys.path:
     sys.path.insert(0, str(PKG_ROOT))
 
 from quantum_cat0.cat0_cone import audit_metric_cat0, project_onto_cat0_socp, project_onto_euclidean_sdp
-from quantum_cat0.models import QuantumNetwork, get_topology
+from quantum_cat0.certificates import export_lean4_enflo_certificate, extract_enflo_dual_certificate
+from quantum_cat0.models import GHZResource, QuantumNetwork, get_topology
 from quantum_cat0.solvers import check_slocc_feasibility, solve_covering_capacity_hierarchy
 
 
@@ -121,3 +126,86 @@ def test_k23_strict_three_way_cone_separation():
     assert math.isclose(res.rho_cat0, 2.0, rel_tol=1e-3)
     assert math.isclose(res.rho_metric, 8.0 / 3.0, rel_tol=1e-3)
     assert res.rho_euclidean < res.rho_cat0 < res.rho_metric
+
+
+def test_ghz4_hybrid_exact_cut_and_permutation_invariance():
+    """Verify GHZ spectral bounds match exact flattening cut (0.75) and are party-order invariant."""
+    net = get_topology("ghz4_hybrid")
+    feas = check_slocc_feasibility(net)
+    assert feas.verdict == "FORBIDDEN_BY_CUT"
+    assert math.isclose(feas.min_cut_ratio, 0.75, rel_tol=1e-4)
+    assert math.isclose(feas.metric_lp_ratio, 0.75, rel_tol=1e-4)
+    assert math.isclose(feas.cat0_spectral_ratio, 0.75, rel_tol=1e-4)
+
+    net_perm = QuantumNetwork(
+        name="ghz4_perm",
+        num_parties=4,
+        source_eprs={(0, 1): 0.5, (2, 3): 0.5},
+        target_eprs={(0, 2): 1.0, (1, 3): 1.0},
+        source_ghz=[GHZResource(parties=(3, 1, 2, 0), rate=1.5)],
+    )
+    c1 = solve_covering_capacity_hierarchy(net)
+    c2 = solve_covering_capacity_hierarchy(net_perm)
+    assert math.isclose(c1.rho_cat0, c2.rho_cat0, rel_tol=1e-5)
+    assert math.isclose(c1.ebit_budget_cat0, c2.ebit_budget_cat0, rel_tol=1e-5)
+
+
+def test_grid3x3_strict_three_way_planar_grid_separation():
+    """Verify 9-node planar grid strictly separates Euclidean (1.5) < CAT(0) (~1.5337) < Metric (8/3) with zero BN violation."""
+    net = get_topology("grid_3x3")
+    res = solve_covering_capacity_hierarchy(net)
+    assert math.isclose(res.rho_euclidean, 1.5, rel_tol=1e-3)
+    assert res.rho_euclidean + 0.02 < res.rho_cat0 < res.rho_metric - 1.0
+    assert res.witness_cat0_max_bn_violation < 1e-5
+
+
+def test_k23_classical_lp_gap_only_verdict():
+    """On K_{2,3}, classical Metric LP < 1 (0.75) while every CAT(0) spectral bound >= 1.0 (achieved by K_{1,3} star tree)."""
+    feas = check_slocc_feasibility(get_topology("K23_bipartite"))
+    assert feas.verdict == "CLASSICAL_LP_GAP_ONLY"
+    assert math.isclose(feas.min_cut_ratio, 1.0, rel_tol=1e-4)
+    assert math.isclose(feas.metric_lp_ratio, 0.75, rel_tol=1e-4)
+    assert math.isclose(feas.cat0_spectral_ratio, 1.0, abs_tol=1e-3)
+
+
+def test_exact_rational_enflo_dual_certificates():
+    """Extract and exact-Fraction-verify rational Farkas dual proofs across 5 canonical networks."""
+    expected = {
+        "C4_crossing": Fraction(1, 1),
+        "hypercube_Q3": Fraction(1, 1),
+        "K23_bipartite": Fraction(2, 1),
+        "butterfly_6": Fraction(2, 1),
+        "grid_2x3": Fraction(2, 1),
+    }
+    for name, exp_rho in expected.items():
+        cert = extract_enflo_dual_certificate(get_topology(name))
+        assert cert.verified_exact is True
+        assert cert.exact_rho_enflo == exp_rho
+        assert all(sl >= 0 for sl in cert.edge_slacks.values())
+
+
+def _find_lean_exe() -> pathlib.Path | None:
+    exe = "lean.exe" if os.name == "nt" else "lean"
+    for anc in [PKG_ROOT, *PKG_ROOT.parents[:4], pathlib.Path.home()]:
+        cand = anc / ".elan" / "toolchains" / "leanprover--lean4---v4.33.1" / "bin" / exe
+        if cand.exists():
+            return cand
+    w = shutil.which("lean")
+    return pathlib.Path(w) if w else None
+
+
+def test_exported_lean4_certificate_compiles_in_live_lean_kernel(tmp_path: pathlib.Path):
+    """Export Lean 4 proof certificates for K_{2,3} and Butterfly-6 and kernel-check them live."""
+    lean_exe = _find_lean_exe()
+    if lean_exe is None:
+        pytest.skip("Lean 4 binary not found")
+
+    for name in ("K23_bipartite", "butterfly_6"):
+        net = get_topology(name)
+        cert = extract_enflo_dual_certificate(net)
+        lean_src = export_lean4_enflo_certificate(net, cert)
+        assert "sorry" not in lean_src.split("-/")[-1]
+        fp = tmp_path / f"{name}_cert.lean"
+        fp.write_text(lean_src, encoding="utf-8")
+        proc = subprocess.run([str(lean_exe), "--json", str(fp)], capture_output=True, text=True)
+        assert proc.returncode == 0, f"Lean kernel rejected exported {name} certificate:\n{proc.stdout}\n{proc.stderr}"

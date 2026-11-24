@@ -7,6 +7,7 @@ import json
 import os
 import pathlib
 import re
+import threading
 import time
 import urllib.request
 from typing import Dict, List, Optional, Protocol, Sequence, Tuple
@@ -16,6 +17,7 @@ from ..runtime.lean_diagnostics import LeanLSPClient, check_lean_file_json
 from ..tcb.static_audit import BANNED_RULES, strip_lean_comments_and_strings
 from .planner import LemmaTask, ProofPlan
 from .retriever import PremiseIndex
+from .tree_search import BestFirstProofSearch, TreeSearchConfig
 
 
 @dataclass
@@ -112,6 +114,7 @@ class TaskProofResult:
     last_errors: List[str] = field(default_factory=list)
     lsp_goals_inspected: List[str] = field(default_factory=list)
     retrieved_premises: List[str] = field(default_factory=list)
+    tree_search_stats: Optional[Dict[str, object]] = None
 
 
 def _contains_banned_construct(tactic_body: str) -> Optional[str]:
@@ -183,8 +186,36 @@ def _build_symbolic_candidates(
         ("tier0", "grind"),
     ])
 
-    # --- Tier 1: Targeted unfold + simp + nested split + omega / decide / grind ---
+    # --- Tier 1: Targeted unfold + simp + nested split + nonlinear/inequality forwarding + omega / grind ---
+    pos_hyps = [
+        vn for vn, ty in task.theorem.binders
+        if re.match(r"^0\s*<\s*[A-Za-z_][A-Za-z0-9_']*$", ty.strip())
+    ]
+    mul_pos_after = [
+        f"all_goals (try have _hmp_{i}_{j} := Nat.mul_pos {pos_hyps[i]} {pos_hyps[j]})"
+        for i in range(len(pos_hyps))
+        for j in range(len(pos_hyps))
+        if i != j
+    ]
+    task_by_name = {t.name: t for t in plan.tasks}
+    binder_names_str = " ".join(vn for vn, _ in task.theorem.binders)
+    up_have_after = [
+        f"all_goals (try have _hup_{idx} := PCVHProofs.{u}" + (f" {binder_names_str}" if binder_names_str else "") + ")"
+        for idx, u in enumerate(upstream_theorem_names)
+        if u in task_by_name and len(task_by_name[u].theorem.binders) == len(task.theorem.binders)
+    ]
+
     if unfold_str:
+        if up_have_after:
+            cands.append((
+                "tier1",
+                "\n".join([
+                    f"unfold {unfold_str}",
+                    *up_have_after,
+                    "all_goals (try omega)",
+                    "all_goals (try grind)",
+                ]),
+            ))
         cands.extend([
             ("tier1", f"unfold {unfold_str}; decide"),
             ("tier1", f"unfold {unfold_str}; omega"),
@@ -192,13 +223,20 @@ def _build_symbolic_candidates(
             ("tier1", f"simp [{combined_simp}]\nall_goals (try omega)\nall_goals (try grind)"),
             (
                 "tier1",
-                f"simp only [{combined_simp}]\n"
-                f"all_goals (try split)\n"
-                f"all_goals (try simp_all [{combined_simp}])\n"
-                f"all_goals (try split)\n"
-                f"all_goals (try simp_all [{combined_simp}])\n"
-                f"all_goals (try omega)\n"
-                f"all_goals (try grind)",
+                "\n".join([
+                    f"simp only [{combined_simp}]",
+                    "all_goals (try split)",
+                    f"all_goals (try simp_all [{combined_simp}])",
+                    "all_goals (try split)",
+                    f"all_goals (try simp_all [{combined_simp}])",
+                    "all_goals (try apply Nat.div_lt_of_lt_mul)",
+                    "all_goals (try rw [Nat.add_mul])",
+                    "all_goals (try rw [Nat.mul_add])",
+                    *mul_pos_after,
+                    *up_have_after,
+                    "all_goals (try omega)",
+                    "all_goals (try grind)",
+                ]),
             ),
             ("tier1", f"repeat (first | constructor | (simp [{combined_simp}]; done) | decide | omega | grind)"),
         ])
@@ -286,6 +324,8 @@ class IterativeProverWorker:
         lean_bin: Optional[pathlib.Path] = None,
         llm_backend: Optional[LLMBackend] = None,
         skip_symbolic_tiers: bool = False,
+        enable_tree_search: Optional[bool] = None,
+        tree_search_config: Optional[TreeSearchConfig] = None,
     ) -> None:
         self.cfg = cfg
         self.plan = plan
@@ -293,7 +333,24 @@ class IterativeProverWorker:
         self.lean_bin = lean_bin
         self.llm_backend = llm_backend
         self.skip_symbolic_tiers = skip_symbolic_tiers
+        # When `skip_symbolic_tiers=True` and caller didn't explicitly enable tree search,
+        # skip straight to Tier-3 LLM full-proof repair for deterministic behavior.
+        if enable_tree_search is None:
+            self.enable_tree_search = (not skip_symbolic_tiers) and cfg.enable_tree_search
+        else:
+            self.enable_tree_search = enable_tree_search
+        self.tree_search_config = tree_search_config
         self.spent_usd = 0.0
+        self._budget_lock = threading.Lock()
+
+    def _add_cost(self, delta: float) -> float:
+        with self._budget_lock:
+            self.spent_usd += delta
+            return self.spent_usd
+
+    def _budget_remaining(self) -> float:
+        with self._budget_lock:
+            return max(0.0, self.cfg.max_token_budget_usd - self.spent_usd)
 
     def prove_task(
         self,
@@ -332,13 +389,52 @@ class IterativeProverWorker:
                     )
                 last_errors = [d.format_compact() for d in chk.errors]
 
+        # --- Tier 2.5: Best-First Proof-Tree Search with Live Lean 4 LSP Backtracking ---
+        tree_stats: Optional[Dict[str, object]] = None
+        if self.enable_tree_search:
+            searcher = BestFirstProofSearch(
+                self.cfg,
+                self.plan,
+                self.premise_index,
+                lean_bin=self.lean_bin,
+                llm_backend=self.llm_backend,
+                search_config=self.tree_search_config,
+            )
+            ts_res = searcher.search(
+                task,
+                dep_mods,
+                upstream_names,
+                target_fp,
+                budget_remaining_usd=self._budget_remaining(),
+            )
+            self._add_cost(ts_res.cost_usd)
+            attempts += ts_res.nodes_expanded
+            tree_stats = ts_res.to_dict()
+            if ts_res.proved:
+                tier_label = "tier3-tree-llm" if (self.llm_backend is not None and ts_res.cost_usd > 0) else "tier2.5-tree"
+                return TaskProofResult(
+                    theorem_name=task.name,
+                    module_name=task.module_name,
+                    file_path=target_fp,
+                    proved=True,
+                    tier_used=tier_label,
+                    attempts=attempts,
+                    llm_rounds=0,
+                    cost_usd=ts_res.cost_usd,
+                    duration_s=time.time() - t0,
+                    tactic_body=ts_res.tactic_body,
+                    tree_search_stats=tree_stats,
+                )
+            if ts_res.last_errors:
+                last_errors = ts_res.last_errors
+
         # --- Tier 3: Live LSP Goal Extraction + BM25 Premise Retrieval + Iterative LLM Repair ---
         lsp_goals: List[str] = []
         retrieved_names: List[str] = []
         llm_rounds = 0
         task_cost = 0.0
 
-        if self.llm_backend is not None and self.spent_usd < self.cfg.max_token_budget_usd:
+        if self.llm_backend is not None and self._budget_remaining() > 0.0:
             # 1. Extract live infoview goal at `sorry` via Lean 4 headless LSP
             stub_src, tac_line = _render_lemma_module(self.plan, task, dep_mods, "sorry")
             target_fp.write_text(stub_src, encoding="utf-8")
@@ -358,7 +454,7 @@ class IterativeProverWorker:
             header_lines = stub_src.splitlines()[:tac_line]
 
             for r in range(1, self.cfg.max_rounds_per_lemma + 1):
-                if self.spent_usd >= self.cfg.max_token_budget_usd:
+                if self._budget_remaining() <= 0.0:
                     break
                 llm_rounds += 1
                 attempts += 1
@@ -373,7 +469,7 @@ class IterativeProverWorker:
                     previous_errors=prev_errs,
                 )
                 cand_body, cost = self.llm_backend.propose_tactic_proof(ctx)
-                self.spent_usd += cost
+                self._add_cost(cost)
                 task_cost += cost
                 prev_attempt = cand_body
 
@@ -400,6 +496,7 @@ class IterativeProverWorker:
                         tactic_body=cand_body,
                         lsp_goals_inspected=lsp_goals,
                         retrieved_premises=retrieved_names,
+                        tree_search_stats=tree_stats,
                     )
                 prev_errs = [d.format_compact() for d in chk.errors] or [chk.raw_output[-400:]]
                 last_errors = prev_errs
@@ -417,4 +514,5 @@ class IterativeProverWorker:
             last_errors=last_errors,
             lsp_goals_inspected=lsp_goals,
             retrieved_premises=retrieved_names,
+            tree_search_stats=tree_stats,
         )

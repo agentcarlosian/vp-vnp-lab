@@ -10,6 +10,7 @@ from typing import List, Optional
 import numpy as np
 
 from .cat0_cone import audit_metric_cat0
+from .certificates import export_lean4_enflo_certificate, extract_enflo_dual_certificate
 from .models import QuantumNetwork, get_topology, list_topologies
 from .solvers import check_slocc_feasibility, solve_covering_capacity_hierarchy
 
@@ -35,9 +36,7 @@ def cmd_list(args: argparse.Namespace) -> int:
 def cmd_check(args: argparse.Namespace) -> int:
     net = _load_net(args.network)
     cov = solve_covering_capacity_hierarchy(net)
-    feas = check_slocc_feasibility(net, run_covering_analysis=False)
-    feas.covering_ebit_budget_cat0 = cov.ebit_budget_cat0
-    feas.covering_feasible_with_l2_cover = net.total_source_ebits + 1e-5 >= cov.ebit_budget_cat0
+    feas = check_slocc_feasibility(net, run_covering_analysis=False, precomputed_covering=cov)
 
     payload = {
         "network": net.to_dict(),
@@ -80,11 +79,11 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
             f"{'Topology':<22} | {'n':>2} | {'rho_M':>7} | {'rho_CAT0':>8} | {'rho_Euc':>7} | "
             f"{'CAT0 Gain':>9} | {'CutRat':>6} | {'Verdict'}"
         )
-        print("-" * 102)
+        print("-" * 104)
     for name in names:
         net = get_topology(name)
         cov = solve_covering_capacity_hierarchy(net)
-        feas = check_slocc_feasibility(net, run_covering_analysis=False)
+        feas = check_slocc_feasibility(net, run_covering_analysis=False, precomputed_covering=cov)
         results.append({"covering": cov.to_dict(), "feasibility": feas.to_dict()})
         if not args.as_json:
             print(
@@ -104,8 +103,40 @@ def cmd_audit_metric(args: argparse.Namespace) -> int:
     if args.as_json:
         print(json.dumps(res.to_dict(), indent=2))
     else:
-        print(json.dumps(res.to_dict(), indent=2))
+        print(f"=== CAT(0) & Schoenberg Metric Audit (n={res.num_points}) ===")
+        print(f"  Valid Metric (triangle): {res.is_valid_metric} (max_viol={res.max_triangle_violation:.3e})")
+        print(f"  4-Point CAT(0) (Thm C1): {res.is_cat0_4pt} (max_BN_viol={res.max_berg_nikolaev_violation:.3e}, worst={res.worst_quadruple})")
+        print(f"  Euclidean (Schoenberg):  {res.is_euclidean_embeddable} (min_gram_eig={res.min_gram_eigenvalue:.6f})")
+        if res.cat0_projection_frobenius_dist is not None:
+            print(f"  Dist to CAT(0) cone:     {res.cat0_projection_frobenius_dist:.6f}")
+            print(f"  Dist to Euclidean cone:  {res.euclidean_projection_frobenius_dist:.6f}")
     return 0
+
+
+def cmd_certify(args: argparse.Namespace) -> int:
+    net = _load_net(args.network)
+    cert = extract_enflo_dual_certificate(net)
+    lean_code: Optional[str] = None
+    if args.lean_out is not None:
+        lean_code = export_lean4_enflo_certificate(net, cert)
+        args.lean_out.parent.mkdir(parents=True, exist_ok=True)
+        args.lean_out.write_text(lean_code, encoding="utf-8")
+
+    if args.as_json:
+        out = cert.to_dict()
+        if args.lean_out is not None:
+            out["lean_out"] = str(args.lean_out)
+        print(json.dumps(out, indent=2))
+    else:
+        print(f"=== Exact Rational CAT(0)/Enflo Dual Certificate: {net.name} (n={net.num_parties}) ===")
+        print(f"  Exact rho_Enflo: {cert.exact_rho_enflo.numerator}/{cert.exact_rho_enflo.denominator} ({cert.float_rho_enflo:.6f})")
+        print(f"  Verified Exact:  {cert.verified_exact} (arbitrary-precision Fraction check)")
+        print(f"  Active Duals ({len(cert.active_terms)}):")
+        for t in cert.active_terms:
+            print(f"    + ({t.weight.numerator}/{t.weight.denominator}) * [{t.kind}] {t.description}")
+        if args.lean_out is not None:
+            print(f"  Exported Lean 4: {args.lean_out}")
+    return 0 if cert.verified_exact else 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -133,6 +164,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_am.add_argument("--project", action="store_true", help="Compute CVXPY SOCP/SDP projection distances")
     p_am.add_argument("--json", action="store_true", dest="as_json")
     p_am.set_defaults(func=cmd_audit_metric)
+
+    p_cert = sub.add_parser("certify", help="Extract exact rational Farkas dual certificate & optional Lean 4 proof")
+    p_cert.add_argument("network", help="Topology name or path to JSON")
+    p_cert.add_argument("--lean-out", type=pathlib.Path, default=None, help="Emit standalone Lean 4 proof module")
+    p_cert.add_argument("--json", action="store_true", dest="as_json")
+    p_cert.set_defaults(func=cmd_certify)
 
     return p
 

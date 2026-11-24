@@ -1,7 +1,7 @@
 {
   "schema": "pcvh.spec-lock.v1",
   "name": "blueprint02-bft-consensus-merkle",
-  "pinned_at": "2026-11-24T11:19:17.303315+00:00",
+  "pinned_at": "2026-11-24T17:46:04.007510+00:00",
   "spec_bundle_sha256": "6c198d932aec503ff6eafd5805fb15e0657611c65c9beace3d53fb8e6971b3cd",
   "files": {
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",

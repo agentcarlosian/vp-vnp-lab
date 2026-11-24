@@ -1,7 +1,7 @@
 {
   "schema": "pcvh.spec-lock.v1",
   "name": "blueprint03-ast-peephole-optimizer",
-  "pinned_at": "2026-11-24T11:15:46.951367+00:00",
+  "pinned_at": "2026-11-24T17:44:41.210506+00:00",
   "spec_bundle_sha256": "0df2945d02ae8870fcc4d0b116ed550ea1b02f56080c5f90e90639f6f20c4344",
   "files": {
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",

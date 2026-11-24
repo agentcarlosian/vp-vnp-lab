@@ -61,6 +61,11 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cryptography
+
       - name: Run Zero-Trust Palomar Verification Gate
         working-directory: pcvh
         run: |
@@ -96,9 +101,55 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest numpy scipy cvxpy psutil
+          python -m pip install pytest numpy scipy cvxpy psutil cryptography
 
       - name: Run full PCVH test suite
         working-directory: pcvh
         run: |
           python -m pytest -v tests/
+
+  pcvh-dual-kernel-nanoda:
+    name: PCVH Dual-Kernel (lean4export + nanoda) & Ed25519 Signing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan & Lean 4.33.1
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain leanprover/lean4:v4.33.1
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cryptography
+
+      - name: Cache & build independent lean4export + nanoda kernel tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/lean-ci-tools
+          key: lean-ci-tools-v4.33.1-nanoda-68d5ca9d
+
+      - name: Build lean4export & nanoda_bin
+        run: |
+          bash scripts/setup_dual_kernel_ci.sh
+          echo "$HOME/.cache/lean-ci-tools/bin" >> "$GITHUB_PATH"
+
+      - name: Verify blueprints under dual kernels + Ed25519 DSSE signing
+        working-directory: pcvh
+        run: |
+          python -m pcvh keygen --out-dir /tmp/pcvh-ci-keys
+          for bp in 01_erc4626_vault 02_bft_consensus 03_ssa_peephole_opt 04_double_entry_ledger 05_cat0_certificate; do
+            echo "=== Dual-Kernel Verifying $bp ==="
+            python -m pcvh verify "blueprints/$bp" \
+              --require-dual-kernel \
+              --sign-key /tmp/pcvh-ci-keys/pcvh_signing.key.pem \
+              --attestation "blueprints/$bp/proof-attestation.json"
+            python -m pcvh verify-sig "blueprints/$bp/proof-attestation.json" \
+              --pubkey /tmp/pcvh-ci-keys/pcvh_signing.pub.pem
+          done

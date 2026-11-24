@@ -165,6 +165,11 @@ def run_diff_aware_reprove(
 
     cur_names = {t.name for t in plan.tasks}
     removed = sorted(set(prev_thms.keys()) - cur_names)
+    for rem_name in removed:
+        rem_mod = prev_thms.get(rem_name, {}).get("module", "")
+        if rem_mod:
+            rem_fp = cfg.project_root / (rem_mod.replace(".", "/") + ".lean")
+            rem_fp.unlink(missing_ok=True)
 
     # Ensure Statement .olean is fresh
     lean_bin_dir = resolve_lean_bin(cfg.project_root, lean_bin)

@@ -1,6 +1,6 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-24T11:13:37.500938+00:00",
+  "timestamp_utc": "2026-11-24T17:43:38.084861+00:00",
   "spec_name": "blueprint05-cat0-socp-certificate",
   "verdict": "VERIFIED",
   "spec_bundle_sha256": "a2fc96a52fcb87e7bf21cdc1e700a8ff25019f1d2af206032d473f923b07c58c",
@@ -22,9 +22,9 @@
     "lean_kernel_build": "PASS",
     "palomar_comparator": "PASS (4 theorems DefEq, axioms=['Quot.sound', 'propext'])",
     "nonvacuity_witness": "PASS",
-    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; nanoda runs in Linux CI)"
+    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; Missing independent kernel tools: lean4export, nanoda_bin (enforced in Linux CI dual-kernel job))"
   },
   "failure_reasons": [],
-  "duration_s": 8.337,
-  "attestation_sha256": "b3873ab43402bce55913b46f1dc462a1f875a50b7db785411658eee26b726162"
+  "duration_s": 4.447,
+  "attestation_sha256": "6c9bbfa9c3ea34f9ef5d63f7e91924493e12645af9ed9c180fb2ca8c82c49940"
 }

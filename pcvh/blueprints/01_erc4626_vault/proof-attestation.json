@@ -1,6 +1,6 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-24T11:19:17.285372+00:00",
+  "timestamp_utc": "2026-11-24T17:46:03.992167+00:00",
   "spec_name": "blueprint01-erc4626-vault-amm",
   "verdict": "VERIFIED",
   "spec_bundle_sha256": "24e639104be60a40d0d14e7f436ef078b7e08772404eb3b2dba63cf82854be61",
@@ -25,10 +25,10 @@
     "lean_kernel_build": "PASS",
     "palomar_comparator": "PASS (6 theorems DefEq, axioms=['Classical.choice', 'Quot.sound', 'propext'])",
     "nonvacuity_witness": "PASS",
-    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; nanoda runs in Linux CI)",
+    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; Missing independent kernel tools: lean4export, nanoda_bin (enforced in Linux CI dual-kernel job))",
     "differential_conformance": "PASS (1000/1000 DeFi AMM+Vault differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 11.018,
-  "attestation_sha256": "27532d65ddbc632bf742751da65ea2d08c5f1f54c2bf94145bc40f77f75a6719"
+  "duration_s": 5.827,
+  "attestation_sha256": "d4a975468bd466c2b212853bd44902d99858bd2b2b447b05a58e4c3291940c90"
 }

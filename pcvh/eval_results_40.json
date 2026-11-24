@@ -1,6 +1,6 @@
 {
   "schema": "pcvh.eval40.v1",
-  "timestamp_utc": "2026-11-24T11:22:07.786099+00:00",
+  "timestamp_utc": "2026-11-24T17:47:32.962592+00:00",
   "total_tasks": 40,
   "sound_tasks": 32,
   "buggy_tasks": 8,
@@ -11,7 +11,7 @@
   "sound_palomar_verified": 32,
   "sound_auto_prove_pct": 100.0,
   "false_acceptance_count": 0,
-  "total_duration_s": 31.79,
+  "total_duration_s": 16.95,
   "axioms_used": [
     "Classical.choice",
     "Quot.sound",
@@ -53,7 +53,7 @@
       "proved": true,
       "tier_used": "tier2",
       "palomar_verified": true,
-      "latency_s": 0.576
+      "latency_s": 0.328
     },
     {
       "task_id": "defi_02_amm_output_bounded",
@@ -64,7 +64,7 @@
       "proved": true,
       "tier_used": "tier2",
       "palomar_verified": true,
-      "latency_s": 0.774
+      "latency_s": 0.397
     },
     {
       "task_id": "defi_03_vault_fee_capped",
@@ -75,7 +75,7 @@
       "proved": true,
       "tier_used": "tier2",
       "palomar_verified": true,
-      "latency_s": 1.135
+      "latency_s": 0.549
     },
     {
       "task_id": "defi_04_vault_redeem_solvency",
@@ -86,7 +86,7 @@
       "proved": true,
       "tier_used": "tier2",
       "palomar_verified": true,
-      "latency_s": 1.864
+      "latency_s": 1.049
     },
     {
       "task_id": "defi_05_escrow_release_nonneg",
@@ -97,7 +97,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "defi_06_timelock_monotonic",
@@ -108,7 +108,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "defi_07_stake_reward_nonneg",
@@ -119,7 +119,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "defi_08_slippage_guard",
@@ -130,7 +130,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "defi_09_BUGGY_unguarded_withdraw",
@@ -141,7 +141,7 @@
       "proved": false,
       "tier_used": "stage2-falsifier",
       "palomar_verified": false,
-      "latency_s": 0.121
+      "latency_s": 0.076
     },
     {
       "task_id": "defi_10_BUGGY_fee_overcharge",
@@ -152,7 +152,7 @@
       "proved": false,
       "tier_used": "stage2-falsifier",
       "palomar_verified": false,
-      "latency_s": 0.121
+      "latency_s": 0.076
     },
     {
       "task_id": "proto_01_bft_quorum_bound",
@@ -163,7 +163,7 @@
       "proved": true,
       "tier_used": "tier0",
       "palomar_verified": true,
-      "latency_s": 0.182
+      "latency_s": 0.107
     },
     {
       "task_id": "proto_02_raft_term_monotonic",
@@ -174,7 +174,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "proto_03_nonce_replay_guard",
@@ -185,7 +185,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "proto_04_seq_window_bounds",
@@ -196,7 +196,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "proto_05_ttl_decrement_safe",
@@ -207,7 +207,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "proto_06_threshold_sig_count",
@@ -218,7 +218,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "proto_07_merkle_depth_positive",
@@ -229,7 +229,7 @@
       "proved": true,
       "tier_used": "tier0",
       "palomar_verified": true,
-      "latency_s": 0.198
+      "latency_s": 0.117
     },
     {
       "task_id": "proto_08_lease_renewal_valid",
@@ -240,7 +240,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "proto_09_BUGGY_bft_2f_threshold",
@@ -251,7 +251,7 @@
       "proved": false,
       "tier_used": "stage2-falsifier",
       "palomar_verified": false,
-      "latency_s": 0.121
+      "latency_s": 0.076
     },
     {
       "task_id": "proto_10_BUGGY_nonce_replay",
@@ -262,7 +262,7 @@
       "proved": false,
       "tier_used": "stage2-falsifier",
       "palomar_verified": false,
-      "latency_s": 0.121
+      "latency_s": 0.076
     },
     {
       "task_id": "comp_01_add_zero_right",
@@ -273,7 +273,7 @@
       "proved": true,
       "tier_used": "tier0",
       "palomar_verified": true,
-      "latency_s": 0.182
+      "latency_s": 0.107
     },
     {
       "task_id": "comp_02_mul_one_left",
@@ -284,7 +284,7 @@
       "proved": true,
       "tier_used": "tier0",
       "palomar_verified": true,
-      "latency_s": 0.182
+      "latency_s": 0.107
     },
     {
       "task_id": "comp_03_sub_self_zero",
@@ -295,7 +295,7 @@
       "proved": true,
       "tier_used": "tier0",
       "palomar_verified": true,
-      "latency_s": 0.182
+      "latency_s": 0.107
     },
     {
       "task_id": "comp_04_double_neg",
@@ -306,7 +306,7 @@
       "proved": true,
       "tier_used": "tier0",
       "palomar_verified": true,
-      "latency_s": 0.182
+      "latency_s": 0.107
     },
     {
       "task_id": "comp_05_strength_mul2",
@@ -317,7 +317,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "comp_06_bool_demorgan",
@@ -328,7 +328,7 @@
       "proved": true,
       "tier_used": "tier0",
       "palomar_verified": true,
-      "latency_s": 0.198
+      "latency_s": 0.117
     },
     {
       "task_id": "comp_07_clamp_bounds",
@@ -339,7 +339,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "comp_08_add_comm_assoc",
@@ -350,7 +350,7 @@
       "proved": true,
       "tier_used": "tier0",
       "palomar_verified": true,
-      "latency_s": 0.182
+      "latency_s": 0.107
     },
     {
       "task_id": "comp_09_BUGGY_sub_comm",
@@ -361,7 +361,7 @@
       "proved": false,
       "tier_used": "stage2-falsifier",
       "palomar_verified": false,
-      "latency_s": 0.121
+      "latency_s": 0.076
     },
     {
       "task_id": "comp_10_BUGGY_div_assoc",
@@ -372,7 +372,7 @@
       "proved": false,
       "tier_used": "stage2-falsifier",
       "palomar_verified": false,
-      "latency_s": 0.121
+      "latency_s": 0.076
     },
     {
       "task_id": "fsm_01_transfer_conservation",
@@ -383,7 +383,7 @@
       "proved": true,
       "tier_used": "tier0",
       "palomar_verified": true,
-      "latency_s": 0.182
+      "latency_s": 0.107
     },
     {
       "task_id": "fsm_02_three_leg_fee_conservation",
@@ -394,7 +394,7 @@
       "proved": true,
       "tier_used": "tier0",
       "palomar_verified": true,
-      "latency_s": 0.182
+      "latency_s": 0.107
     },
     {
       "task_id": "fsm_03_rate_limiter_cap",
@@ -405,7 +405,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "fsm_04_rate_limiter_consume",
@@ -416,7 +416,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "fsm_05_orderbook_fill_bounds",
@@ -427,7 +427,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "fsm_06_margin_liquidation_trigger",
@@ -438,7 +438,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "fsm_07_circuit_breaker_trip",
@@ -449,7 +449,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "fsm_08_queue_capacity_bound",
@@ -460,7 +460,7 @@
       "proved": true,
       "tier_used": "tier1",
       "palomar_verified": true,
-      "latency_s": 0.224
+      "latency_s": 0.129
     },
     {
       "task_id": "fsm_09_BUGGY_fee_leak",
@@ -471,7 +471,7 @@
       "proved": false,
       "tier_used": "stage2-falsifier",
       "palomar_verified": false,
-      "latency_s": 0.121
+      "latency_s": 0.076
     },
     {
       "task_id": "fsm_10_BUGGY_bucket_overflow",
@@ -482,7 +482,7 @@
       "proved": false,
       "tier_used": "stage2-falsifier",
       "palomar_verified": false,
-      "latency_s": 0.121
+      "latency_s": 0.076
     }
   ]
 }

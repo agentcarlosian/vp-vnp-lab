@@ -1,6 +1,6 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-24T11:19:29.409428+00:00",
+  "timestamp_utc": "2026-11-24T17:46:11.620910+00:00",
   "spec_name": "blueprint02-bft-consensus-merkle",
   "verdict": "VERIFIED",
   "spec_bundle_sha256": "6c198d932aec503ff6eafd5805fb15e0657611c65c9beace3d53fb8e6971b3cd",
@@ -24,10 +24,10 @@
     "lean_kernel_build": "PASS",
     "palomar_comparator": "PASS (5 theorems DefEq, axioms=['Classical.choice', 'Quot.sound', 'propext'])",
     "nonvacuity_witness": "PASS",
-    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; nanoda runs in Linux CI)",
+    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; Missing independent kernel tools: lean4export, nanoda_bin (enforced in Linux CI dual-kernel job))",
     "differential_conformance": "PASS (500/500 BFT+Merkle differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 12.105,
-  "attestation_sha256": "85077481dc0c3b353c59be28bee1c7fecede4002d02d94ce84189e2b5fd32a09"
+  "duration_s": 7.613,
+  "attestation_sha256": "2a0c9bc810fb36cca6098498e47b4d8d9e3455114ce12c6fc3720c27fb19edf5"
 }

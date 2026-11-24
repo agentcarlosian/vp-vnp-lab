@@ -56,6 +56,31 @@ def choose_conic_solver() -> str:
     return next(iter(installed))
 
 
+def solve_with_conic_fallback(prob: cp.Problem, preferred: Optional[str] = None) -> str:
+    """Solve a CVXPY conic problem with automatic fallback across installed conic solvers."""
+    installed = set(cp.installed_solvers())
+    order: List[str] = []
+    if preferred and preferred in installed:
+        order.append(preferred)
+    for cand in ("CLARABEL", "SCS", "ECOS"):
+        if cand in installed and cand not in order:
+            order.append(cand)
+    if not order:
+        order = list(installed)
+
+    last_err: Optional[Exception] = None
+    for slv in order:
+        try:
+            prob.solve(solver=slv)
+            if prob.status in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE) and prob.value is not None:
+                return slv
+        except Exception as exc:
+            last_err = exc
+    if last_err is not None:
+        raise last_err
+    return order[0]
+
+
 def schoenberg_gram_matrix(D: np.ndarray) -> np.ndarray:
     """Compute centered Gram matrix G = -1/2 J (D^2) J; D is Euclidean iff G is PSD."""
     n = D.shape[0]
@@ -223,11 +248,11 @@ def project_onto_cat0_socp(D: np.ndarray) -> Tuple[np.ndarray, float]:
     diff_terms = [u_vars[(i, j)] - float(U_target[i, j]) for i, j in combinations(range(n), 2)]
     obj = cp.Minimize(cp.sum_squares(cp.hstack(diff_terms)))
     prob = cp.Problem(obj, constraints)
-    prob.solve(solver=choose_conic_solver())
+    solve_with_conic_fallback(prob)
 
     U_opt = np.zeros((n, n), dtype=float)
     for (i, j), var in u_vars.items():
-        val = max(0.0, float(var.value))
+        val = max(0.0, float(var.value)) if var.value is not None else 0.0
         U_opt[i, j] = val
         U_opt[j, i] = val
     D_opt = np.sqrt(U_opt)
@@ -249,9 +274,9 @@ def project_onto_euclidean_sdp(D: np.ndarray) -> Tuple[np.ndarray, float]:
         diff_terms.append(u_ij - float(U_target[i, j]))
 
     prob = cp.Problem(cp.Minimize(cp.sum_squares(cp.hstack(diff_terms))), constraints)
-    prob.solve(solver=choose_conic_solver())
+    solve_with_conic_fallback(prob)
 
-    G_val = np.asarray(G.value, dtype=float)
+    G_val = np.asarray(G.value, dtype=float) if G.value is not None else np.zeros((n, n), dtype=float)
     U_opt = np.zeros((n, n), dtype=float)
     for i, j in combinations(range(n), 2):
         val = max(0.0, float(G_val[i, i] + G_val[j, j] - 2.0 * G_val[i, j]))

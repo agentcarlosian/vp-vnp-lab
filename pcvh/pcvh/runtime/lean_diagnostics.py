@@ -112,6 +112,7 @@ class LeanLSPClient:
         self._responses: Dict[int, Dict[str, Any]] = {}
         self._diagnostics_by_uri: Dict[str, List[Dict[str, Any]]] = {}
         self._file_done_events: Dict[str, threading.Event] = {}
+        self._doc_versions: Dict[str, int] = {}
         self._cond = threading.Condition()
         self._reader_thread: Optional[threading.Thread] = None
         self._closed = False
@@ -226,9 +227,13 @@ class LeanLSPClient:
         fp = pathlib.Path(file_path).resolve()
         uri = fp.as_uri()
         content = text if text is not None else fp.read_text(encoding="utf-8", errors="replace")
+        if uri in self._doc_versions:
+            return self.update_file(fp, content, wait_s=wait_s)
         ev = threading.Event()
         with self._cond:
             self._file_done_events[uri] = ev
+            self._diagnostics_by_uri[uri] = []
+            self._doc_versions[uri] = 1
         self._notify(
             "textDocument/didOpen",
             {
@@ -242,6 +247,55 @@ class LeanLSPClient:
         )
         ev.wait(timeout=wait_s)
         return uri
+
+    def update_file(self, file_path: pathlib.Path, text: str, wait_s: float = 15.0) -> str:
+        """Incrementally update an open Lean document via `textDocument/didChange` (reusing compiled imports)."""
+        fp = pathlib.Path(file_path).resolve()
+        uri = fp.as_uri()
+        if uri not in self._doc_versions:
+            return self.open_file(fp, text=text, wait_s=wait_s)
+        ev = threading.Event()
+        with self._cond:
+            ver = self._doc_versions[uri] + 1
+            self._doc_versions[uri] = ver
+            self._file_done_events[uri] = ev
+            self._diagnostics_by_uri[uri] = []
+        self._notify(
+            "textDocument/didChange",
+            {
+                "textDocument": {"uri": uri, "version": ver},
+                "contentChanges": [{"text": text}],
+            },
+        )
+        ev.wait(timeout=wait_s)
+        return uri
+
+    def evaluate_state(
+        self,
+        file_path: pathlib.Path,
+        text: str,
+        line_0idx: int,
+        col_0idx: int,
+        *,
+        timeout: float = 15.0,
+    ) -> Tuple[List[LeanDiagnostic], List[str], Optional[str]]:
+        """Sync document via `didOpen`/`didChange` and return `(diagnostics, goals_at_pos, rendered_md)`."""
+        uri = self.open_file(file_path, text=text, wait_s=timeout)
+        # Brief yield so trailing publishDiagnostics arrives before reading
+        time.sleep(0.03)
+        resp = self._request(
+            "$/lean/plainGoal",
+            {
+                "textDocument": {"uri": uri},
+                "position": {"line": line_0idx, "character": col_0idx},
+            },
+            timeout=timeout,
+        )
+        result = resp.get("result")
+        goals = [str(g) for g in (result.get("goals") or [])] if result else []
+        rendered = str(result.get("rendered")) if (result and result.get("rendered") is not None) else None
+        diags = self.get_diagnostics(file_path)
+        return diags, goals, rendered
 
     def get_plain_goal(
         self,

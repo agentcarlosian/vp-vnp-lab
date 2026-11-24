@@ -9,7 +9,18 @@ from typing import Dict, List, Sequence, Set, Tuple
 
 from ..config import SpecConfig
 
-SKIP_DIRS = {".lake", ".git", ".pcvh_tcb_snapshot", ".lean-orch-backups", "__pycache__"}
+SKIP_DIRS = {
+    ".lake",
+    ".git",
+    ".pcvh_tcb_snapshot",
+    ".lean-orch-backups",
+    "__pycache__",
+    "target",
+    "node_modules",
+    "out",
+    "cache",
+    "broadcast",
+}
 
 
 @dataclass(frozen=True)
@@ -113,9 +124,10 @@ BANNED_RULES: Tuple[Tuple[str, re.Pattern[str]], ...] = (
     ("banned_native_decide", re.compile(r"\bnative_decide\b")),
     ("banned_unsafe", re.compile(r"\bunsafe\b")),
     ("banned_implemented_by", re.compile(r"\bimplemented_by\b")),
-    ("banned_extern", re.compile(r"@\[[^\]]*\bextern\b")),
+    ("banned_extern", re.compile(r"@\[[^\]]*\b(?:extern|csimp)\b")),
     ("banned_ofReduceBool", re.compile(r"\bofReduceBool\b|\bofReduceNat\b")),
     ("banned_env_addDecl", re.compile(r"\b(?:addDecl|addAndCompile|addAxiom|setEnv)\b")),
+    ("banned_compile_time_exec", re.compile(r"(?:^|\s)(?:#eval|run_cmd|elab)\b")),
     ("banned_debug_skip_kernel", re.compile(r"set_option\s+debug\.skipKernelTC\b")),
 )
 
@@ -132,6 +144,7 @@ def scan_untrusted_lean_files(
     """Scan all non-TCB `.lean` files in `workspace_root` for proof-cheating constructs and forbidden imports."""
     exempt: Set[str] = {
         cfg.challenge_rel.replace("\\", "/"),
+        cfg.statement_rel.replace("\\", "/"),
         "lakefile.lean",
     }
     if exempt_rel_paths:
@@ -156,9 +169,11 @@ def scan_untrusted_lean_files(
         clean_lines = cleaned.splitlines()
 
         for idx, cline in enumerate(clean_lines, start=1):
+            # Normalize Lean French guillemets (`«sorry»` -> ` sorry `) so escaped identifiers cannot evade `\b`
+            norm_line = cline.replace("«", " ").replace("»", " ")
             rline = raw_lines[idx - 1].strip() if idx - 1 < len(raw_lines) else ""
             for rule_name, pat in BANNED_RULES:
-                if pat.search(cline):
+                if pat.search(norm_line):
                     violations.append(
                         AuditViolation(file=rel_str, line=idx, rule=rule_name, snippet=rline[:120])
                     )

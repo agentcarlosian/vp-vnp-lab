@@ -119,7 +119,19 @@ def build_isolated_overlay_workspace(
     Returns (workspace_path, overlaid_tcb_files).
     """
     dest_dir.mkdir(parents=True, exist_ok=True)
-    skip_dirs = {".lake", ".git", "__pycache__", ".pytest_cache", TCB_SNAPSHOT_DIR, ".lean-orch-backups"}
+    skip_dirs = {
+        ".lake",
+        ".git",
+        "__pycache__",
+        ".pytest_cache",
+        TCB_SNAPSHOT_DIR,
+        ".lean-orch-backups",
+        "target",
+        "node_modules",
+        "out",
+        "cache",
+        "broadcast",
+    }
 
     # 1. Copy untrusted candidate project files (excluding build artifacts & snapshot)
     for item in cfg.project_root.rglob("*"):

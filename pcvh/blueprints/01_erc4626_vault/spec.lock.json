@@ -1,7 +1,7 @@
 {
   "schema": "pcvh.spec-lock.v1",
   "name": "blueprint01-erc4626-vault-amm",
-  "pinned_at": "2026-11-24T11:19:06.266611+00:00",
+  "pinned_at": "2026-11-24T17:45:58.164983+00:00",
   "spec_bundle_sha256": "24e639104be60a40d0d14e7f436ef078b7e08772404eb3b2dba63cf82854be61",
   "files": {
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",

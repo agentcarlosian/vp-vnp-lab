@@ -20,6 +20,8 @@
 .lean-orch-backups/
 .pcvh_diff_cache.json
 .pcvh_tcb_snapshot/
+.pcvh_studio_keys/
+.keys/
 
 # Python caches & packaging artifacts
 **/__pycache__/

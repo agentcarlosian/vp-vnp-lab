@@ -1,7 +1,7 @@
 {
   "schema": "pcvh.spec-lock.v1",
   "name": "blueprint04-double-entry-ledger",
-  "pinned_at": "2026-11-24T11:13:08.096214+00:00",
+  "pinned_at": "2026-11-24T17:43:21.797384+00:00",
   "spec_bundle_sha256": "16512e620b9e97db6538964f50f11652bc4fbf5f62dfc784fabd4cdf354ffb98",
   "files": {
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
