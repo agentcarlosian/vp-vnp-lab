@@ -1,0 +1,8 @@
+name = "ledger_blueprint"
+defaultTargets = ["Specs.Ledger.Challenge", "Solution"]
+
+[[lean_lib]]
+name = "Specs"
+
+[[lean_lib]]
+name = "Solution"

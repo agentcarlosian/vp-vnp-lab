@@ -1,0 +1,8 @@
+name = "vault_amm_blueprint"
+defaultTargets = ["Specs.Vault.Challenge", "Solution"]
+
+[[lean_lib]]
+name = "Specs"
+
+[[lean_lib]]
+name = "Solution"

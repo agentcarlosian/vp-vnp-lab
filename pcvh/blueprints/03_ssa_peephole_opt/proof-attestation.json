@@ -1,0 +1,33 @@
+{
+  "schema": "pcvh.attestation.v1",
+  "timestamp_utc": "2026-11-24T11:19:45.919368+00:00",
+  "spec_name": "blueprint03-ast-peephole-optimizer",
+  "verdict": "VERIFIED",
+  "spec_bundle_sha256": "0df2945d02ae8870fcc4d0b116ed550ea1b02f56080c5f90e90639f6f20c4344",
+  "toolchain": "leanprover/lean4:v4.33.1",
+  "verified_theorems": [
+    "iropt_spec_nonvacuous",
+    "optPass_nonexpanding",
+    "optPass_sound",
+    "simpAdd_sound",
+    "simpMul_sound",
+    "simpSub_sound"
+  ],
+  "axioms_used": [
+    "Quot.sound",
+    "propext"
+  ],
+  "checks": {
+    "tcb_manifest": "PASS",
+    "tcb_overlay": "PASS (5 immutable TCB files stamped)",
+    "static_audit": "PASS (8 files scanned)",
+    "lean_kernel_build": "PASS",
+    "palomar_comparator": "PASS (6 theorems DefEq, axioms=['Quot.sound', 'propext'])",
+    "nonvacuity_witness": "PASS",
+    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; nanoda runs in Linux CI)",
+    "differential_conformance": "PASS (500/500 IR Peephole AST differential traces matched bit-for-bit)"
+  },
+  "failure_reasons": [],
+  "duration_s": 16.507,
+  "attestation_sha256": "d1e8161c062a965fcef7ef010d2f39469bfc9cff6e4646cc090927d057a19203"
+}

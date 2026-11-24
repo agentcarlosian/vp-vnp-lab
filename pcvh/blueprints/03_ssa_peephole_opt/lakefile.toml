@@ -1,0 +1,8 @@
+name = "peephole_opt_blueprint"
+defaultTargets = ["Specs.IrOpt.Challenge", "Solution"]
+
+[[lean_lib]]
+name = "Specs"
+
+[[lean_lib]]
+name = "Solution"

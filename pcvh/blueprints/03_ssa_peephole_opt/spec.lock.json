@@ -1,0 +1,13 @@
+{
+  "schema": "pcvh.spec-lock.v1",
+  "name": "blueprint03-ast-peephole-optimizer",
+  "pinned_at": "2026-11-24T11:15:46.951367+00:00",
+  "spec_bundle_sha256": "0df2945d02ae8870fcc4d0b116ed550ea1b02f56080c5f90e90639f6f20c4344",
+  "files": {
+    "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
+    "Specs/IrOpt/Statement.lean": "daff569b069ec31a0a8fc089e0460579454a0362355715c357ebc57dfd4e9b85",
+    "Specs/IrOpt/Challenge.lean": "679d341e348554e3d4786aa362ebde5696a1ec23527b753e27aaf0333829104b",
+    "lakefile.toml": "d5abf58232da84e8bce5c1d9589e5ff88e290f7114518b5f9df99fe47e4020ec",
+    "lake-manifest.json": "2863a79595dd60a5fa74561769b187468244539beac2e87cc658faebac2f6642"
+  }
+}

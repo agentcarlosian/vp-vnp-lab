@@ -1,0 +1,12 @@
+{
+  "schema": "pcvh.spec-lock.v1",
+  "name": "blueprint02-bft-consensus-merkle",
+  "pinned_at": "2026-11-24T11:19:17.303315+00:00",
+  "spec_bundle_sha256": "6c198d932aec503ff6eafd5805fb15e0657611c65c9beace3d53fb8e6971b3cd",
+  "files": {
+    "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
+    "Specs/Bft/Statement.lean": "d2dc2e5995a4fda18f73fd3274686d857402b4128b9903b16dec798aa8e762d6",
+    "Specs/Bft/Challenge.lean": "a7f4e89c2c9a4e1d5c1718c6924c068dfa527591b9501e5c3aa0832dfdf41dff",
+    "lakefile.toml": "c1b3a760fdef5e77cb55f920299df3cfb33216df41523c6af548365b49289bb4"
+  }
+}

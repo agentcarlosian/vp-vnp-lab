@@ -1,0 +1,16 @@
+[spec]
+name = "blueprint04-double-entry-ledger"
+lean_toolchain = "leanprover/lean4:v4.33.1"
+statement = "Specs/Ledger/Statement.lean"
+challenge = "Specs/Ledger/Challenge.lean"
+challenge_module = "Specs.Ledger.Challenge"
+solution_module = "Solution"
+allowed_axioms = ["propext", "Classical.choice", "Quot.sound"]
+require_nonvacuity_witness = true
+nonvacuity_suffix = "nonvacuous"
+
+[agent_loop]
+forbid_umbrella_imports = ["Mathlib", "Mathlib.Tactic", "Mathlib.All"]
+
+[conformance]
+command = "python conformance_fuzz.py --traces 1000 --steps-per-trace 10"

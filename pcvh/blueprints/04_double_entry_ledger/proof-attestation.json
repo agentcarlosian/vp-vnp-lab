@@ -1,0 +1,33 @@
+{
+  "schema": "pcvh.attestation.v1",
+  "timestamp_utc": "2026-11-24T11:13:21.592794+00:00",
+  "spec_name": "blueprint04-double-entry-ledger",
+  "verdict": "VERIFIED",
+  "spec_bundle_sha256": "16512e620b9e97db6538964f50f11652bc4fbf5f62dfc784fabd4cdf354ffb98",
+  "toolchain": "leanprover/lean4:v4.33.1",
+  "verified_theorems": [
+    "ledger_spec_nonvacuous",
+    "step_conserves_total_balance",
+    "step_idempotent_on_seen_key",
+    "trace_conserves_total_balance",
+    "trace_preserves_nonneg_balances",
+    "trace_seenKeys_monotone"
+  ],
+  "axioms_used": [
+    "Quot.sound",
+    "propext"
+  ],
+  "checks": {
+    "tcb_manifest": "PASS",
+    "tcb_overlay": "PASS (5 immutable TCB files stamped)",
+    "static_audit": "PASS (2 files scanned)",
+    "lean_kernel_build": "PASS",
+    "palomar_comparator": "PASS (6 theorems DefEq, axioms=['Quot.sound', 'propext'])",
+    "nonvacuity_witness": "PASS",
+    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; nanoda runs in Linux CI)",
+    "differential_conformance": "PASS (1000/1000 differential traces matched bit-for-bit)"
+  },
+  "failure_reasons": [],
+  "duration_s": 13.496,
+  "attestation_sha256": "7767b41c2ce51ebd597d58bf143b4c96eecedc100ec2e4c45d631c6b721fde57"
+}

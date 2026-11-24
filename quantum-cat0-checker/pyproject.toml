@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantum-cat0-checker"
+version = "0.1.0"
+description = "CVXPY SOCP/SDP checker applying Theorem C.1 CAT(0) Berg-Nikolaev bounds to multi-party quantum network entanglement capacity"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "cvxpy>=1.5",
+    "networkx>=3.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+qcat0 = "quantum_cat0.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["quantum_cat0*"]

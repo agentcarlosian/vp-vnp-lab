@@ -1,0 +1,8 @@
+name = "cat0_cert_blueprint"
+defaultTargets = ["Specs.Cat0.Challenge", "Solution"]
+
+[[lean_lib]]
+name = "Specs"
+
+[[lean_lib]]
+name = "Solution"

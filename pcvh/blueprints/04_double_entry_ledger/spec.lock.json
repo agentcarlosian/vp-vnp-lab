@@ -1,0 +1,13 @@
+{
+  "schema": "pcvh.spec-lock.v1",
+  "name": "blueprint04-double-entry-ledger",
+  "pinned_at": "2026-11-24T11:13:08.096214+00:00",
+  "spec_bundle_sha256": "16512e620b9e97db6538964f50f11652bc4fbf5f62dfc784fabd4cdf354ffb98",
+  "files": {
+    "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
+    "Specs/Ledger/Statement.lean": "83bd1326e9199252b39961c5e4f276aed2861752f8e88c2eb9d279ff48e991d0",
+    "Specs/Ledger/Challenge.lean": "f08db9bc8279d9ecaa698ddfeb49a78f3457e0c0533c74ba00ca8f59172d3300",
+    "lakefile.toml": "244a73a9ec12f18446018fa91251f378b2cbc8dce7bc530a08c3717ecf22824b",
+    "lake-manifest.json": "defd12d2bd62b7562122818ac4a09a66a37a691a647053b8d6736110be0260bc"
+  }
+}

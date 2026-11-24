@@ -1,0 +1,13 @@
+[spec]
+name = "blueprint05-cat0-socp-certificate"
+lean_toolchain = "leanprover/lean4:v4.33.1"
+statement = "Specs/Cat0/Statement.lean"
+challenge = "Specs/Cat0/Challenge.lean"
+challenge_module = "Specs.Cat0.Challenge"
+solution_module = "Solution"
+allowed_axioms = ["propext", "Classical.choice", "Quot.sound"]
+require_nonvacuity_witness = true
+nonvacuity_suffix = "nonvacuous"
+
+[agent_loop]
+forbid_umbrella_imports = ["Mathlib", "Mathlib.Tactic", "Mathlib.All"]

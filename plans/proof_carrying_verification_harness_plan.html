@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agentic Proof-Carrying Verification Harness — Full Engineering Plan</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-elev: #121932;
+      --bg-card: #161f3d;
+      --bg-code: #0c1224;
+      --border: #26325b;
+      --text: #e6ecff;
+      --text-muted: #98a6cf;
+      --accent: #6aa6ff;
+      --accent-2: #4ce0b3;
+      --accent-3: #b388ff;
+      --warn: #ffb84d;
+      --danger: #ff6b7a;
+      --ok: #4ce0b3;
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      --radius: 14px;
+      --font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      --font-mono: "Cascadia Code", "Fira Code", Consolas, "Courier New", monospace;
+    }
+
+    [data-theme="light"] {
+      --bg: #f4f7fc;
+      --bg-elev: #ffffff;
+      --bg-card: #ffffff;
+      --bg-code: #f0f4fb;
+      --border: #d8e1f0;
+      --text: #141c33;
+      --text-muted: #526080;
+      --accent: #2563eb;
+      --accent-2: #0d9488;
+      --accent-3: #7c3aed;
+      --warn: #d97706;
+      --danger: #dc2626;
+      --ok: #059669;
+      --shadow: 0 8px 24px rgba(20, 28, 51, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      display: grid;
+      grid-template-columns: 270px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--bg-elev);
+      border-right: 1px solid var(--border);
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: #081022;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0.02em;
+      line-height: 1.25;
+    }
+
+    .brand span {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--text-muted);
+      padding: 8px 11px;
+      border-radius: 9px;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    nav a:hover, nav a.active {
+      background: rgba(106, 166, 255, 0.14);
+      color: var(--text);
+    }
+
+    nav a.active {
+      border-left: 3px solid var(--accent);
+      padding-left: 8px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theme-btn, .btn {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      border-radius: 9px;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .theme-btn:hover, .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .progress-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+
+    .progress-bar {
+      height: 7px;
+      border-radius: 99px;
+      background: var(--border);
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.25s ease;
+    }
+
+    /* Main content */
+    main {
+      padding: 36px 46px 80px;
+      max-width: 1180px;
+      width: 100%;
+    }
+
+    section {
+      margin-bottom: 52px;
+      scroll-margin-top: 24px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, rgba(106,166,255,0.16), rgba(76,224,179,0.09) 55%, rgba(179,136,255,0.12));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px 34px;
+      box-shadow: var(--shadow);
+      margin-bottom: 36px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .pill {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-elev);
+      color: var(--accent);
+    }
+
+    .pill.green { color: var(--accent-2); }
+    .pill.purple { color: var(--accent-3); }
+    .pill.warn { color: var(--warn); }
+
+    .hero h2 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 15.5px;
+      max-width: 840px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .kpi {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .kpi-val {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-lbl {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    h3.sec-title {
+      font-size: 22px;
+      margin: 0 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.015em;
+    }
+
+    .sec-num {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(106,166,255,0.16);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .sec-lead {
+      color: var(--text-muted);
+      margin: 0 0 20px;
+      font-size: 14.5px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .card h4 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card p { margin: 0 0 10px; color: var(--text-muted); font-size: 14px; }
+    .card ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-muted); font-size: 13.8px; }
+    .card li { margin-bottom: 6px; }
+    .card li strong { color: var(--text); }
+
+    /* SVG Diagram */
+    .diagram-wrap {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      overflow-x: auto;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      cursor: pointer;
+      padding: 9px 15px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-elev);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 13.5px;
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn:hover { border-color: var(--accent); color: var(--text); }
+    .tab-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #081022;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Code blocks */
+    .code-block {
+      position: relative;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      margin: 12px 0;
+      overflow: hidden;
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 12px;
+      background: rgba(106,166,255,0.08);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .copy-btn {
+      cursor: pointer;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-family: var(--font-sans);
+    }
+
+    .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+    pre {
+      margin: 0;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      background: rgba(106,166,255,0.12);
+      padding: 1px 5px;
+      border-radius: 5px;
+    }
+
+    pre code { background: none; padding: 0; }
+
+    /* Pipeline stages */
+    .stage-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 14px;
+    }
+
+    .stage {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--accent);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .stage.tcb { border-top-color: var(--accent-2); }
+    .stage.gate { border-top-color: var(--accent-3); }
+    .stage.warn { border-top-color: var(--warn); }
+
+    .stage-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    /* Tables */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+      align-items: center;
+    }
+
+    .filter-btn {
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-elev);
+      color: var(--text-muted);
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+
+    .filter-btn.active {
+      background: rgba(106,166,255,0.2);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background: rgba(106,166,255,0.09);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .sev {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .sev.crit { background: rgba(255,107,122,0.18); color: var(--danger); }
+    .sev.high { background: rgba(255,184,77,0.18); color: var(--warn); }
+    .sev.med  { background: rgba(106,166,255,0.18); color: var(--accent); }
+
+    /* Roadmap Accordion & Interactive Checklists */
+    .phase {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+
+    .phase-head {
+      padding: 16px 20px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: rgba(106,166,255,0.05);
+      user-select: none;
+    }
+
+    .phase-head:hover { background: rgba(106,166,255,0.1); }
+    .phase-title { font-weight: 700; font-size: 15.5px; }
+    .phase-meta { font-family: var(--font-mono); font-size: 12px; color: var(--accent-2); }
+    .phase-body { padding: 16px 20px; border-top: 1px solid var(--border); }
+    .phase.collapsed .phase-body { display: none; }
+
+    .checklist { list-style: none; padding: 0; margin: 10px 0 0; }
+    .checklist li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px dashed var(--border);
+      font-size: 13.8px;
+      color: var(--text);
+    }
+    .checklist li:last-child { border-bottom: none; }
+    .checklist input[type="checkbox"] {
+      margin-top: 4px;
+      accent-color: var(--accent-2);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+    .checklist li.done label {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .callout {
+      border-left: 4px solid var(--accent-2);
+      background: rgba(76, 224, 179, 0.08);
+      padding: 14px 18px;
+      border-radius: 0 11px 11px 0;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    .callout.warn {
+      border-left-color: var(--warn);
+      background: rgba(255, 184, 77, 0.09);
+    }
+
+    @media (max-width: 920px) {
+      body { grid-template-columns: 1fr; }
+      aside { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+      main { padding: 24px 18px 60px; }
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <div class="brand">
+      <div class="brand-badge">PC</div>
+      <div>
+        <h1>Proof-Carrying<br/>Verification Harness</h1>
+        <span>Palomar-Style Engineering Blueprint</span>
+      </div>
+    </div>
+
+    <nav id="toc">
+      <a href="#overview" class="active">00. Executive Overview</a>
+      <a href="#architecture">01. Zero-Trust Architecture</a>
+      <a href="#domains">02. Domain Blueprints (4)</a>
+      <a href="#agent-loop">03. Spec → Proof Agent Loop</a>
+      <a href="#threat-model">04. Anti-Cheating Defense</a>
+      <a href="#repo-schema">05. Repo Layout & Schemas</a>
+      <a href="#roadmap">06. 12-Week Roadmap</a>
+      <a href="#metrics">07. Metrics & Cost Model</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="progress-box">
+        <div><strong>Roadmap Progress:</strong> <span id="prog-text">0 / 20</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+      </div>
+      <button class="theme-btn" id="theme-toggle">Switch to Light Theme</button>
+    </div>
+  </aside>
+
+  <main>
+    <!-- HERO -->
+    <div class="hero" id="overview">
+      <div class="pill-row">
+        <span class="pill">Lean 4 + Palomar Gate</span>
+        <span class="pill green">Zero-Trust Dual Kernel</span>
+        <span class="pill purple">Multi-Agent Proof Loop</span>
+        <span class="pill warn">Windows &amp; Linux Ready</span>
+      </div>
+      <h2>Agentic Proof-Carrying Verification Harness (PCVH)</h2>
+      <p>
+        A production engineering platform inspired by the exact verification paradigm that checked Anthropic's
+        72,932-line <code>vp-vnp</code> Lean 4 proof against a 98-line human-auditable spec: engineers write a tiny,
+        pinned formal specification (<code>Statement.lean</code> + <code>Challenge.lean</code>), an untrusted
+        multi-agent synthesis loop discovers and repairs proofs, and an air-gapped dual-kernel gate
+        (<code>comparator</code> + <code>lean4export</code> + <code>nanoda</code>) emits a cryptographically signed
+        proof certificate before code merges or ships.
+      </p>
+
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-val">50–150 LoC</div>
+          <div class="kpi-lbl">Human-Audited Spec TCB</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val">3 Axioms Max</div>
+          <div class="kpi-lbl">propext, Choice, Quot.sound</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val">2 Kernels</div>
+          <div class="kpi-lbl">Lean 4 + Independent nanoda</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val">4 Verticals</div>
+          <div class="kpi-lbl">Contracts, Protocols, Compilers, FSMs</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val">12 Weeks</div>
+          <div class="kpi-lbl">5 Phased Engineering Milestones</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 1: ARCHITECTURE -->
+    <section id="architecture">
+      <h3 class="sec-title"><span class="sec-num">01</span> Zero-Trust Trust-Boundary Architecture</h3>
+      <p class="sec-lead">
+        The defining insight of Palomar-style verification is <strong>asymmetric trust</strong>: you never need to trust
+        the AI agent, its prompt, its proof search heuristics, or its 50,000 lines of intermediate lemmas. You only
+        audit the short specification and the small deterministic checker at the boundary.
+      </p>
+
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 1040 430" width="100%" role="img" aria-label="Proof-Carrying Verification Harness Architecture">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#6aa6ff" />
+            </marker>
+            <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#4ce0b3" />
+            </marker>
+          </defs>
+
+          <!-- Zone 1: TCB Spec -->
+          <rect x="18" y="20" width="240" height="390" rx="14" fill="rgba(76,224,179,0.08)" stroke="#4ce0b3" stroke-width="2" stroke-dasharray="6 4"/>
+          <text x="36" y="48" fill="#4ce0b3" font-size="13" font-weight="700" font-family="monospace">ZONE A: HUMAN-AUDITED TCB</text>
+
+          <rect x="34" y="68" width="208" height="78" rx="10" fill="#161f3d" stroke="#4ce0b3" stroke-width="1.5"/>
+          <text x="48" y="92" fill="#e6ecff" font-size="13.5" font-weight="700">Statement.lean</text>
+          <text x="48" y="112" fill="#98a6cf" font-size="11.5">Types, state transition semantics,</text>
+          <text x="48" y="128" fill="#98a6cf" font-size="11.5">invariant predicates (~80 LoC)</text>
+
+          <rect x="34" y="164" width="208" height="78" rx="10" fill="#161f3d" stroke="#4ce0b3" stroke-width="1.5"/>
+          <text x="48" y="188" fill="#e6ecff" font-size="13.5" font-weight="700">Challenge.lean</text>
+          <text x="48" y="208" fill="#98a6cf" font-size="11.5">Target theorems (sorry stubs) +</text>
+          <text x="48" y="224" fill="#98a6cf" font-size="11.5">mandatory non-vacuity witnesses</text>
+
+          <rect x="34" y="260" width="208" height="68" rx="10" fill="#161f3d" stroke="#4ce0b3" stroke-width="1.5"/>
+          <text x="48" y="284" fill="#e6ecff" font-size="13.5" font-weight="700">Spec Hash Manifest</text>
+          <text x="48" y="304" fill="#98a6cf" font-size="11.5">SHA-256 pinned + lean-toolchain</text>
+          <text x="48" y="319" fill="#98a6cf" font-size="11.5">Read-only mount to agents</text>
+
+          <rect x="34" y="344" width="208" height="50" rx="10" fill="#161f3d" stroke="#6aa6ff" stroke-width="1.2"/>
+          <text x="48" y="366" fill="#e6ecff" font-size="12.5" font-weight="700">Differential Oracle</text>
+          <text x="48" y="383" fill="#98a6cf" font-size="11">Model ↔ Prod code fuzz bridge</text>
+
+          <!-- Zone 2: Untrusted Agent Loop -->
+          <rect x="292" y="20" width="420" height="390" rx="14" fill="rgba(106,166,255,0.07)" stroke="#6aa6ff" stroke-width="2"/>
+          <text x="310" y="48" fill="#6aa6ff" font-size="13" font-weight="700" font-family="monospace">ZONE B: UNTRUSTED AGENT SYNTHESIS LOOP</text>
+
+          <rect x="312" y="68" width="380" height="58" rx="10" fill="#161f3d" stroke="#ffb84d" stroke-width="1.5"/>
+          <text x="328" y="92" fill="#ffb84d" font-size="13" font-weight="700">1. Falsification Pre-Check (Plausible / Hypothesis / Z3)</text>
+          <text x="328" y="111" fill="#98a6cf" font-size="11.5">Refute buggy specs or missing preconditions in &lt;10s before proving</text>
+
+          <rect x="312" y="142" width="182" height="74" rx="10" fill="#161f3d" stroke="#6aa6ff" stroke-width="1.5"/>
+          <text x="326" y="166" fill="#e6ecff" font-size="13" font-weight="700">2. Lemma DAG Planner</text>
+          <text x="326" y="185" fill="#98a6cf" font-size="11.2">Splits invariant into small</text>
+          <text x="326" y="201" fill="#98a6cf" font-size="11.2">targeted-import subgoals</text>
+
+          <rect x="510" y="142" width="182" height="74" rx="10" fill="#161f3d" stroke="#6aa6ff" stroke-width="1.5"/>
+          <text x="524" y="166" fill="#e6ecff" font-size="13" font-weight="700">3. Parallel Provers</text>
+          <text x="524" y="185" fill="#98a6cf" font-size="11.2">LSP goal state + tactic</text>
+          <text x="524" y="201" fill="#98a6cf" font-size="11.2">repair &amp; subgoal split</text>
+
+          <rect x="312" y="234" width="380" height="72" rx="10" fill="#161f3d" stroke="#6aa6ff" stroke-width="1.5"/>
+          <text x="328" y="258" fill="#e6ecff" font-size="13" font-weight="700">4. lean-orch Commit-Aware Scheduler + lake shake</text>
+          <text x="328" y="278" fill="#98a6cf" font-size="11.5">Win32 GetPerformanceInfo admission control, OOM backoff,</text>
+          <text x="328" y="294" fill="#98a6cf" font-size="11.5">automatic import minimization (prevents Mathlib commit blowup)</text>
+
+          <rect x="312" y="324" width="380" height="66" rx="10" fill="#161f3d" stroke="#6aa6ff" stroke-width="1.2"/>
+          <text x="328" y="348" fill="#e6ecff" font-size="13" font-weight="700">Candidate Solution Package (Solution.lean + Proofs/*)</text>
+          <text x="328" y="368" fill="#98a6cf" font-size="11.5">Treated as completely untrusted input by Zone C</text>
+
+          <!-- Zone 3: Air-Gapped Palomar Gate -->
+          <rect x="746" y="20" width="276" height="390" rx="14" fill="rgba(179,136,255,0.09)" stroke="#b388ff" stroke-width="2"/>
+          <text x="762" y="48" fill="#b388ff" font-size="13" font-weight="700" font-family="monospace">ZONE C: PALOMAR CI GATE</text>
+
+          <rect x="762" y="68" width="244" height="58" rx="10" fill="#161f3d" stroke="#b388ff" stroke-width="1.5"/>
+          <text x="776" y="92" fill="#e6ecff" font-size="13" font-weight="700">A. Static Anti-Cheat + Overlay</text>
+          <text x="776" y="110" fill="#98a6cf" font-size="11">Re-stamp TCB files; ban unsafe/sorry</text>
+
+          <rect x="762" y="142" width="244" height="62" rx="10" fill="#161f3d" stroke="#b388ff" stroke-width="1.5"/>
+          <text x="776" y="166" fill="#e6ecff" font-size="13" font-weight="700">B. comparator Check</text>
+          <text x="776" y="185" fill="#98a6cf" font-size="11">DefEq theorem types vs Challenge</text>
+          <text x="776" y="198" fill="#98a6cf" font-size="11">Allowlist: propext, Choice, Quot</text>
+
+          <rect x="762" y="220" width="244" height="64" rx="10" fill="#161f3d" stroke="#b388ff" stroke-width="1.5"/>
+          <text x="776" y="244" fill="#e6ecff" font-size="13" font-weight="700">C. lean4export → nanoda</text>
+          <text x="776" y="263" fill="#98a6cf" font-size="11">Independent Rust kernel inside</text>
+          <text x="776" y="276" fill="#98a6cf" font-size="11">networkless landrun / AppContainer</text>
+
+          <rect x="762" y="302" width="244" height="88" rx="10" fill="rgba(76,224,179,0.16)" stroke="#4ce0b3" stroke-width="2"/>
+          <text x="776" y="328" fill="#4ce0b3" font-size="13.5" font-weight="800">Signed Proof Attestation</text>
+          <text x="776" y="348" fill="#e6ecff" font-size="11.2">spec_sha256 + commit + axioms</text>
+          <text x="776" y="364" fill="#e6ecff" font-size="11.2">Unblocks PR Merge / Deploy</text>
+          <text x="776" y="380" fill="#98a6cf" font-size="10.8">(SLSA / Sigstore-compatible JSON)</text>
+
+          <!-- Arrows -->
+          <line x1="242" y1="106" x2="310" y2="106" stroke="#4ce0b3" stroke-width="2" marker-end="url(#arrow-green)"/>
+          <line x1="242" y1="203" x2="310" y2="178" stroke="#4ce0b3" stroke-width="2" marker-end="url(#arrow-green)"/>
+          <path d="M 242 294 C 275 294, 270 15, 758 95" fill="none" stroke="#4ce0b3" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arrow-green)"/>
+          <line x1="494" y1="179" x2="508" y2="179" stroke="#6aa6ff" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="502" y1="216" x2="502" y2="232" stroke="#6aa6ff" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="502" y1="306" x2="502" y2="322" stroke="#6aa6ff" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="692" y1="357" x2="760" y2="104" stroke="#6aa6ff" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="884" y1="126" x2="884" y2="140" stroke="#6aa6ff" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="884" y1="204" x2="884" y2="218" stroke="#6aa6ff" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="884" y1="284" x2="884" y2="300" stroke="#4ce0b3" stroke-width="2" marker-end="url(#arrow-green)"/>
+        </svg>
+      </div>
+
+      <div class="callout">
+        <strong>Why this works in real engineering (not just pure math):</strong> Traditional formal verification fails
+        in industry because writing proofs takes 10× longer than writing code. Conversely, naive LLM code review fails
+        because hallucinations slip past tests. Separating a <em>human-written 100-line spec</em> from an
+        <em>agent-synthesized proof checked by two independent kernels</em> gives us machine-checked certainty without
+        human proof-engineering bottlenecks.
+      </div>
+    </section>
+
+    <!-- SECTION 2: DOMAIN BLUEPRINTS -->
+    <section id="domains">
+      <h3 class="sec-title"><span class="sec-num">02</span> Four Engineering Domain Blueprints</h3>
+      <p class="sec-lead">
+        Switch between the four target engineering verticals to inspect the exact <code>Statement.lean</code> +
+        <code>Challenge.lean</code> pattern, pre-proof falsification oracle, and production conformance bridge.
+      </p>
+
+      <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="smart-contracts">Smart Contracts &amp; DeFi</button>
+        <button class="tab-btn" data-tab="protocols">Distributed &amp; Crypto Protocols</button>
+        <button class="tab-btn" data-tab="compilers">Compiler Passes &amp; Optimizers</button>
+        <button class="tab-btn" data-tab="fsm">Safety-Critical State Machines</button>
+      </div>
+
+      <!-- TAB 1: SMART CONTRACTS -->
+      <div class="tab-panel active" id="tab-smart-contracts">
+        <div class="grid-2">
+          <div class="card">
+            <h4>Domain Specification: ERC-4626 Vault &amp; AMM Solvency</h4>
+            <p>
+              Model contract state transitions (<code>deposit</code>, <code>withdraw</code>, <code>swap</code>,
+              <code>accrueFee</code>) over exact unbounded integers / fixed-point rationals plus explicit
+              <code>UInt256</code> bounds. Prove that <em>every reachable trace</em> preserves solvency, share-price
+              monotonicity, and zero inflation-attack extractability.
+            </p>
+            <ul>
+              <li><strong>Key Invariants:</strong> Vault solvency (<code>totalAssets ≥ Σ redeem(shares)</code>), AMM invariant monotonicity (<code>k' ≥ k</code> with floor rounding favoring pool), non-reentrant state isolation.</li>
+              <li><strong>Falsification Pre-Check:</strong> Foundry / Hypothesis stateful fuzzing + Z3 bounded 8-step flash-loan attack search before launching Lean provers.</li>
+              <li><strong>Production Bridge:</strong> Export Lean reference semantics as executable test oracle; replay 100k Foundry differential traces against live Solidity EVM bytecode.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>Minimal TCB Spec Pattern (<code>Statement.lean</code> + <code>Challenge.lean</code>)</h4>
+            <div class="code-block">
+              <div class="code-header">
+                <span>specs/vault/Challenge.lean (TCB — read-only to agents)</span>
+                <button class="copy-btn">Copy</button>
+              </div>
+              <pre><code>import Specs.Vault.Statement
+
+/-- Core invariant: every sequence of user actions preserves vault solvency
+    and never lets a depositor withdraw more assets than deposited. -/
+theorem vault_solvency_preserved
+    (s0 s1 : VaultState) (txs : List VaultTx)
+    (h_init : s0.WellFormed)
+    (h_exec : execTrace s0 txs = some s1) :
+    s1.totalAssets * s1.totalShares ≥ s1.sumUserRedemptions := by
+  sorry
+
+/-- Mandatory non-vacuity witness: spec admits nontrivial reachable states. -/
+theorem vault_spec_nonvacuous :
+    ∃ s0 s1 txs, s0.WellFormed ∧ txs.length ≥ 3 ∧ execTrace s0 txs = some s1 := by
+  sorry</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: PROTOCOLS -->
+      <div class="tab-panel" id="tab-protocols">
+        <div class="grid-2">
+          <div class="card">
+            <h4>Domain Specification: Consensus Safety &amp; Crypto Transcripts</h4>
+            <p>
+              Model network nodes, Byzantine faults (<code>|F| &lt; n/3</code>), asynchronous message delivery bags,
+              and cryptographic primitives as abstract collision-resistant hash / unforgeable signature predicates.
+            </p>
+            <ul>
+              <li><strong>Key Invariants:</strong> Agreement / Election Safety (no two honest nodes commit conflicting blocks at height <code>h</code>), Quorum Intersection, Merkle inclusion/consistency soundness, Noise/TLS handshake key-binding.</li>
+              <li><strong>Falsification Pre-Check:</strong> Bounded TLC / Python BFS adversary simulator up to 4 nodes and 6 rounds to catch missing quorum or view-change guards instantly.</li>
+              <li><strong>Production Bridge:</strong> Generate deterministic JSON protocol state traces from Rust/Go production nodes and validate every transition step against the Lean transition relation.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>Minimal TCB Spec Pattern (<code>Challenge.lean</code>)</h4>
+            <div class="code-block">
+              <div class="code-header">
+                <span>specs/bft/Challenge.lean (TCB — read-only to agents)</span>
+                <button class="copy-btn">Copy</button>
+              </div>
+              <pre><code>import Specs.Bft.Statement
+
+/-- Agreement safety: under standard quorum bound 3f &lt; n and valid signatures,
+    no reachable network state commits two distinct values at the same height. -/
+theorem bft_agreement_safety
+    (cfg : ClusterConfig) (h_quorum : 3 * cfg.byzantine.card &lt; cfg.nodes.card)
+    (st : NetState cfg) (h_reach : Reachable cfg st)
+    (n1 n2 : NodeId) (h1 : n1 ∉ cfg.byzantine) (h2 : n2 ∉ cfg.byzantine)
+    (height : Nat) (v1 v2 : BlockHash) :
+    Committed st n1 height v1 → Committed st n2 height v2 → v1 = v2 := by
+  sorry</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: COMPILERS -->
+      <div class="tab-panel" id="tab-compilers">
+        <div class="grid-2">
+          <div class="card">
+            <h4>Domain Specification: Semantics-Preserving IR Passes</h4>
+            <p>
+              Define a clean small-step or denotational semantics <code>eval : IR → Env → Option Val</code> for a
+              bytecode / SSA / SQL query / shader IR, plus concrete transformation functions (peephole algebraic
+              reassociation, constant folding, dead-code elimination, bounds-check hoisting).
+            </p>
+            <ul>
+              <li><strong>Key Invariants:</strong> Forward simulation / semantic equivalence (<code>eval (pass prog) ρ = eval prog ρ</code>), termination &amp; well-typedness preservation, bitvector overflow faithfulness (signed vs unsigned).</li>
+              <li><strong>Falsification Pre-Check:</strong> Alive2-style Z3 bitvector equivalence check + random AST differential fuzzer (catches edge cases like <code>INT_MIN / -1</code> or NaN payload shifts in milliseconds).</li>
+              <li><strong>Production Bridge:</strong> Compile verified Lean pass via C/LLVM FFI or export verified rewrite rules directly into Rust/C++ compiler tablegen.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>Minimal TCB Spec Pattern (<code>Challenge.lean</code>)</h4>
+            <div class="code-block">
+              <div class="code-header">
+                <span>specs/ir_opt/Challenge.lean (TCB — read-only to agents)</span>
+                <button class="copy-btn">Copy</button>
+              </div>
+              <pre><code>import Specs.IrOpt.Statement
+
+/-- Peephole + constant-folding pass preserves exact 64-bit bitvector semantics
+    for every well-typed SSA program and initial register environment. -/
+theorem optPass_sound
+    (p : SsaProg) (h_wt : p.WellTyped) (env : RegEnv) :
+    evalProg (optPass p) env = evalProg p env := by
+  sorry
+
+theorem optPass_preserves_wellTyped
+    (p : SsaProg) (h_wt : p.WellTyped) :
+    (optPass p).WellTyped := by
+  sorry</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: STATE MACHINES -->
+      <div class="tab-panel" id="tab-fsm">
+        <div class="grid-2">
+          <div class="card">
+            <h4>Domain Specification: Risk Engines, Ledgers &amp; Safety FSMs</h4>
+            <p>
+              Formalize deterministic event-sourced state machines: double-entry payment ledgers, order-book matching
+              engines, cloud control-plane reconcilers, or safety-critical robotics/avionics mode controllers.
+            </p>
+            <ul>
+              <li><strong>Key Invariants:</strong> Zero-sum double-entry balance conservation, idempotency of duplicate webhook/retry keys, price-time priority ordering, deadlock-freedom / safe fallback reachability.</li>
+              <li><strong>Falsification Pre-Check:</strong> Property-based trace shrinking (Hypothesis) over adversarial event reorderings, retries, and boundary amounts.</li>
+              <li><strong>Production Bridge:</strong> Compile the Lean state-transition core directly via <code>lake build</code> native library or run as a shadow verifier replaying production audit logs.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>Minimal TCB Spec Pattern (<code>Challenge.lean</code>)</h4>
+            <div class="code-block">
+              <div class="code-header">
+                <span>specs/ledger/Challenge.lean (TCB — read-only to agents)</span>
+                <button class="copy-btn">Copy</button>
+              </div>
+              <pre><code>import Specs.Ledger.Statement
+
+/-- Conservation + idempotency: processing any event stream preserves total
+    system value and replaying an already-committed idempotency key is a no-op. -/
+theorem ledger_conservation_and_idempotency
+    (l0 l1 : Ledger) (ev : LedgerEvent)
+    (h_ok : l0.Invariant) (h_step : step l0 ev = .ok l1) :
+    l1.totalBalance = l0.totalBalance ∧
+    (ev.idKey ∈ l0.seenKeys → l1 = l0) := by
+  sorry</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: AGENT LOOP -->
+    <section id="agent-loop">
+      <h3 class="sec-title"><span class="sec-num">03</span> The 7-Stage Agentic Spec → Proof Loop</h3>
+      <p class="sec-lead">
+        Unlike single-shot LLM theorem generation, PCVH treats proof synthesis as a structured, resource-bounded
+        software engineering loop with fast falsification, targeted imports, and deterministic escalation.
+      </p>
+
+      <div class="stage-list">
+        <div class="stage tcb">
+          <div class="stage-tag">Stage 01 · TCB Freeze</div>
+          <h4>Spec Ingestion &amp; Hash Pinning</h4>
+          <p>
+            Hashes <code>Statement.lean</code>, <code>Challenge.lean</code>, <code>lean-toolchain</code>, and
+            <code>lake-manifest.json</code> into <code>spec.lock.json</code>. Extracts every target theorem signature,
+            quantifier structure, and required non-vacuity witness into the task graph.
+          </p>
+        </div>
+
+        <div class="stage warn">
+          <div class="stage-tag">Stage 02 · Fail Fast</div>
+          <h4>Executable Falsification Pre-Check</h4>
+          <p>
+            <strong>Never try to prove a false theorem.</strong> Before invoking prover agents, PCVH runs Lean's
+            <code>Plausible</code> / <code>#eval</code> property checks + Python Hypothesis / Z3 bounded search. If a
+            counterexample is found, the harness halts immediately and returns the concrete failing trace to the engineer!
+          </p>
+        </div>
+
+        <div class="stage">
+          <div class="stage-tag">Stage 03 · Decomposition</div>
+          <h4>DAG Lemma Architect</h4>
+          <p>
+            Breaks each Challenge theorem into a shallow DAG of self-contained helper files (<code>Proofs/Lem_*.lean</code>),
+            each with explicit <strong>minimal imports</strong> (forbidding umbrella <code>import Mathlib</code>) and
+            clear induction / strengthening hypotheses.
+          </p>
+        </div>
+
+        <div class="stage">
+          <div class="stage-tag">Stage 04 · Synthesis</div>
+          <h4>Parallel Prover Workers + LSP Feedback</h4>
+          <p>
+            Spawns isolated worker agents on leaf lemmas. Workers query real Lean 4 goal states via
+            <code>lean --json</code> / Lean LSP and climb a deterministic escalation ladder:
+            <code>omega / simp / grind / aesop</code> → structured <code>calc</code>/induction → premise retrieval →
+            recursive sub-lemma extraction.
+          </p>
+        </div>
+
+        <div class="stage">
+          <div class="stage-tag">Stage 05 · Build Runtime</div>
+          <h4><code>lean-orch</code> Memory-Aware Build</h4>
+          <p>
+            Directly embeds our <strong>Lean 4 Windows/Low-RAM Build Orchestrator</strong>: monitors Win32
+            <code>GetPerformanceInfo</code> commit charge, serializes heavy workers while parallelizing light modules,
+            and auto-retries transient pagefile/mmap faults without crashing consumer workstations.
+          </p>
+        </div>
+
+        <div class="stage">
+          <div class="stage-tag">Stage 06 · Hygiene</div>
+          <h4>Import Shaking &amp; Dead-Code Pruning</h4>
+          <p>
+            Runs native <code>lake shake --fix</code> (for <code>module</code> projects) or our automatic
+            <code>lean-env-fallback</code> analyzer (for standard Lean 4 files) with backup/verify/rollback, shrinking
+            transitive imports and cutting CI rebuild times by 5–20×.
+          </p>
+        </div>
+
+        <div class="stage gate">
+          <div class="stage-tag">Stage 07 · Zero-Trust Gate</div>
+          <h4>Palomar Dual-Kernel Verification</h4>
+          <p>
+            Copies untrusted <code>Proofs/</code> + <code>Solution.lean</code> into a clean air-gapped workspace with
+            immutable TCB files stamped on top. Runs static ban scan → Lean 4 build → <code>comparator</code> →
+            <code>lean4export</code> → <code>nanoda</code> → signs <code>proof-attestation.json</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: THREAT MODEL -->
+    <section id="threat-model">
+      <h3 class="sec-title"><span class="sec-num">04</span> Threat Model &amp; Anti-Cheating Defense Matrix</h3>
+      <p class="sec-lead">
+        LLM provers are notoriously creative reward-hackers. Every known Lean 4 proof-cheating vector—audited directly
+        against Anthropic's <code>vp-vnp</code> Palomar CI script—must be blocked deterministically.
+      </p>
+
+      <div class="filter-bar">
+        <span style="font-size:12.5px;color:var(--text-muted);font-weight:600;">Filter severity:</span>
+        <button class="filter-btn active" data-sev="all">All (8)</button>
+        <button class="filter-btn" data-sev="crit">Critical</button>
+        <button class="filter-btn" data-sev="high">High</button>
+        <button class="filter-btn" data-sev="med">Medium</button>
+      </div>
+
+      <table id="threat-table">
+        <thead>
+          <tr>
+            <th style="width:17%;">Attack / Failure Vector</th>
+            <th style="width:10%;">Severity</th>
+            <th style="width:33%;">How an Untrusted Agent Could Exploit It</th>
+            <th style="width:40%;">Deterministic PCVH Mitigation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-sev="crit">
+            <td><strong>Spec Mutation / Weakening</strong></td>
+            <td><span class="sev crit">Critical</span></td>
+            <td>Agent edits <code>Statement.lean</code> or <code>Challenge.lean</code> to add <code>False</code> hypothesis or weaken the postcondition.</td>
+            <td>Gate overwrites TCB files from pinned SHA-256 commit before building; <code>comparator</code> asserts exact definitional equality against untouched <code>Challenge</code>.</td>
+          </tr>
+          <tr data-sev="crit">
+            <td><strong><code>sorry</code>, <code>admit</code>, Custom <code>axiom</code></strong></td>
+            <td><span class="sev crit">Critical</span></td>
+            <td>Agent leaves hidden <code>sorry</code> in a helper lemma or introduces an unsound <code>axiom</code>.</td>
+            <td>Static AST/regex scan + <code>#print axioms</code> + <code>comparator</code> strict allowlist (<code>[propext, Classical.choice, Quot.sound]</code> only) + <code>nanoda</code> rejection.</td>
+          </tr>
+          <tr data-sev="crit">
+            <td><strong><code>native_decide</code> / Compiler Escape</strong></td>
+            <td><span class="sev crit">Critical</span></td>
+            <td>Agent uses <code>native_decide</code>, <code>unsafe</code>, <code>@[implemented_by]</code>, or <code>Lean.ofReduceBool</code> to bypass kernel type-checking via compiled code.</td>
+            <td>Ban <code>Lean.ofReduceBool</code> &amp; <code>Lean.ofReduceNat</code> from axiom allowlist; reject <code>unsafe</code>/<code>implemented_by</code>/<code>extern</code> in static gate; verified independently by <code>nanoda</code>.</td>
+          </tr>
+          <tr data-sev="crit">
+            <td><strong>Metaprogramming Env Injection</strong></td>
+            <td><span class="sev crit">Critical</span></td>
+            <td>Malicious tactic/macro calls <code>Lean.addDecl</code> or modifies Lean runtime state or exfiltrates secrets during elaboration.</td>
+            <td>Run untrusted elaboration inside networkless OS sandbox (<code>landrun</code> on Linux / restricted Windows Job Object) and re-check exported proof terms in <code>nanoda</code> (zero tactic execution!).</td>
+          </tr>
+          <tr data-sev="high">
+            <td><strong>Vacuous Specification</strong></td>
+            <td><span class="sev high">High</span></td>
+            <td>Engineer accidentally writes contradictory preconditions (e.g. <code>n &lt; 0</code> on <code>Nat</code>), so the invariant holds vacuously for 0 states.</td>
+            <td>Schema requires at least one <strong>constructive non-vacuity witness theorem</strong> per spec + Stage 2 falsification/reachability check proving nontrivial traces exist.</td>
+          </tr>
+          <tr data-sev="high">
+            <td><strong>Model ↔ Production Drift</strong></td>
+            <td><span class="sev high">High</span></td>
+            <td>Lean model is proved sound, but production Solidity/Rust/Python code diverges on an integer rounding or edge case.</td>
+            <td>Mandatory <strong>Differential Conformance Bridge</strong>: execute Lean reference model against production implementation across 100k+ randomized &amp; regression traces on every PR.</td>
+          </tr>
+          <tr data-sev="high">
+            <td><strong>Toolchain / Lakefile Tampering</strong></td>
+            <td><span class="sev high">High</span></td>
+            <td>Agent modifies <code>lakefile.toml</code> or <code>lean-toolchain</code> to point to a patched Lean binary or malicious dependency.</td>
+            <td><code>lean-toolchain</code>, <code>lakefile.*</code>, and <code>lake-manifest.json</code> are TCB-pinned; Gate builds offline with read-only dependency cache.</td>
+          </tr>
+          <tr data-sev="med">
+            <td><strong>Windows Commit-Charge OOM</strong></td>
+            <td><span class="sev med">Medium</span></td>
+            <td>Agent sprays <code>import Mathlib</code> across 30 generated proof files, crashing local &amp; CI builds with <code>failed to read file '*.olean.private'</code>.</td>
+            <td>Linter rejects raw <code>import Mathlib</code> in generated files; <code>lean-orch</code> gates worker concurrency on Win32 commit headroom; Stage 6 runs <code>lake shake</code> automatically.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- SECTION 5: REPO LAYOUT & SCHEMAS -->
+    <section id="repo-schema">
+      <h3 class="sec-title"><span class="sec-num">05</span> Repository Layout, Config &amp; Attestation Schemas</h3>
+      <p class="sec-lead">
+        Clean, composable repository structure designed to live alongside any existing application repository or run as
+        a standalone verification sidecar in CI.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>Proposed Repository Layout (<code>pcvh/</code>)</h4>
+          <div class="code-block">
+            <div class="code-header">
+              <span>directory tree</span>
+              <button class="copy-btn">Copy</button>
+            </div>
+            <pre><code>pcvh/
+├── pyproject.toml
+├── pcvh/
+│   ├── cli.py                 # init | falsify | prove | verify | ci-gate
+│   ├── tcb/
+│   │   ├── manifest.py        # SHA-256 spec pinning &amp; immutable overlay
+│   │   ├── static_audit.py    # AST/token ban list (sorry/unsafe/axiom/Mathlib)
+│   │   └── palomar_gate.py    # comparator + lean4export + nanoda + sandbox
+│   ├── falsify/
+│   │   ├── plausible_runner.py # Lean Plausible / #eval bounded test runner
+│   │   └── z3_oracle.py       # Optional SMT / Hypothesis refuter
+│   ├── agents/
+│   │   ├── planner.py         # Lemma DAG decomposition + interface stubs
+│   │   ├── prover.py          # LSP goal-state loop + tactic escalation ladder
+│   │   ├── retriever.py       # Local &amp; Mathlib lemma retrieval index
+│   │   └── orchestrator.py    # Multi-worker budget &amp; retry controller
+│   ├── runtime/
+│   │   ├── lean_lsp.py        # Lean 4 JSON diagnostic &amp; goal extractor
+│   │   └── build_bridge.py    # Direct integration with lean-orch + lake shake
+│   └── conformance/
+│       └── diff_runner.py     # Lean executable model ↔ prod code trace fuzzer
+├── blueprints/
+│   ├── 01_erc4626_vault/      # Statement.lean, Challenge.lean, Solidity harness
+│   ├── 02_bft_consensus/      # Statement.lean, Challenge.lean, trace checker
+│   ├── 03_ssa_peephole_opt/   # Statement.lean, Challenge.lean, Alive2-like fuzzer
+│   └── 04_double_entry_ledger/# Statement.lean, Challenge.lean, Python/Rust oracle
+└── .github/workflows/
+    └── pcvh-palomar-gate.yml  # Reusable air-gapped dual-kernel PR check</code></pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4>Spec Config (<code>pcvh.toml</code>) &amp; Signed Output (<code>attestation.json</code>)</h4>
+          <div class="code-block">
+            <div class="code-header">
+              <span>pcvh.toml</span>
+              <button class="copy-btn">Copy</button>
+            </div>
+            <pre><code>[spec]
+name = "erc4626-vault-solvency"
+lean_toolchain = "leanprover/lean4:v4.33.1"
+statement = "Specs/Vault/Statement.lean"
+challenge = "Specs/Vault/Challenge.lean"
+solution_entry = "Solution"
+allowed_axioms = ["propext", "Classical.choice", "Quot.sound"]
+require_nonvacuity_witness = true
+
+[falsification]
+enabled = true
+max_seconds = 30
+command = "python conformance/fuzz_vault.py --trials 2000"
+
+[agent_loop]
+max_token_budget_usd = 5.00
+max_rounds_per_lemma = 8
+forbid_umbrella_imports = ["Mathlib", "Mathlib.Tactic"]
+auto_lake_shake = true
+
+[gate]
+require_comparator = true
+require_nanoda = true
+sandbox = "auto"   # landrun (Linux) | job-object (Windows)</code></pre>
+          </div>
+
+          <div class="code-block">
+            <div class="code-header">
+              <span>proof-attestation.json (emitted by Zone C)</span>
+              <button class="copy-btn">Copy</button>
+            </div>
+            <pre><code>{
+  "schema": "pcvh.attestation.v1",
+  "verdict": "VERIFIED",
+  "spec_sha256": "9f86d081884c7d65...",
+  "toolchain": "leanprover/lean4:v4.33.1",
+  "verified_theorems": ["vault_solvency_preserved", "vault_spec_nonvacuous"],
+  "axioms_used": ["propext", "Classical.choice", "Quot.sound"],
+  "checks": {
+    "static_audit": "PASS",
+    "lean_kernel_build": "PASS",
+    "palomar_comparator": "PASS",
+    "lean4export_nanoda": "PASS",
+    "differential_conformance": "PASS (100000/100000 traces)"
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6: ROADMAP -->
+    <section id="roadmap">
+      <h3 class="sec-title"><span class="sec-num">06</span> 5-Phase Implementation Roadmap (12 Weeks)</h3>
+      <p class="sec-lead">
+        Click any phase to expand/collapse details and check off milestones interactively—progress updates live in the
+        sidebar. Every phase delivers a shippable, standalone artifact.
+      </p>
+
+      <div class="phase" data-phase="1">
+        <div class="phase-head">
+          <div class="phase-title">Phase 1 · Zero-Trust Palomar Verification Gate (TCB First!)</div>
+          <div class="phase-meta">Weeks 1–2 · Deliverable: <code>pcvh verify</code></div>
+        </div>
+        <div class="phase-body">
+          <p style="margin:0 0 8px;color:var(--text-muted);font-size:13.8px;">
+            Build the verifier <em>before</em> writing a single line of agent code. If the gate cannot be fooled by a
+            red-team suite of 12 synthetic cheating proofs, we have an unshakeable foundation.
+          </p>
+          <ul class="checklist">
+            <li><input type="checkbox" id="m1"/><label for="m1">Implement <code>pcvh init</code> &amp; SHA-256 TCB manifest pinning (<code>Statement.lean</code>, <code>Challenge.lean</code>, <code>lean-toolchain</code>, <code>lakefile</code>).</label></li>
+            <li><input type="checkbox" id="m2"/><label for="m2">Build static anti-cheating scanner banning <code>sorry</code>, <code>admit</code>, <code>axiom</code>, <code>unsafe</code>, <code>implemented_by</code>, <code>native_decide</code>, and raw <code>import Mathlib</code>.</label></li>
+            <li><input type="checkbox" id="m3"/><label for="m3">Wire immutable spec overlay + <code>comparator</code> + <code>lean4export</code> + <code>nanoda</code> runner inside OS sandbox (Linux <code>landrun</code> / Windows Job Object).</label></li>
+            <li><input type="checkbox" id="m4"/><label for="m4">Pass 12/12 adversarial red-team tests (every known Lean 4 escape hatches rejected) and emit signed <code>proof-attestation.json</code>.</label></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase" data-phase="2">
+        <div class="phase-head">
+          <div class="phase-title">Phase 2 · Falsification Pre-Check + <code>lean-orch</code> Runtime Bridge</div>
+          <div class="phase-meta">Weeks 3–4 · Deliverable: <code>pcvh falsify</code> + LSP Engine</div>
+        </div>
+        <div class="phase-body">
+          <p style="margin:0 0 8px;color:var(--text-muted);font-size:13.8px;">
+            Eliminate wasted LLM proof runs on broken specs and make local Windows/Linux Lean compilation fast,
+            predictable, and diagnostic-rich.
+          </p>
+          <ul class="checklist">
+            <li><input type="checkbox" id="m5"/><label for="m5">Build Lean 4 structured diagnostic &amp; infoview goal-state extractor (<code>lean --json</code> / headless LSP client).</label></li>
+            <li><input type="checkbox" id="m6"/><label for="m6">Integrate <code>lean-build-orchestrator</code> (Win32 commit-charge scheduler + native <code>lake shake</code> + non-<code>module</code> fallback) as the core build runtime.</label></li>
+            <li><input type="checkbox" id="m7"/><label for="m7">Implement Stage 2 falsification hook: Plausible/QuickCheck runner + Python Hypothesis / Z3 bounded counterexample search with shrunken failure reports.</label></li>
+            <li><input type="checkbox" id="m8"/><label for="m8">Verify non-vacuity witness enforcement (fail fast if spec preconditions are unsatisfiable).</label></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase" data-phase="3">
+        <div class="phase-head">
+          <div class="phase-title">Phase 3 · Multi-Agent Spec → Proof Synthesis Loop</div>
+          <div class="phase-meta">Weeks 5–7 · Deliverable: <code>pcvh prove</code></div>
+        </div>
+        <div class="phase-body">
+          <p style="margin:0 0 8px;color:var(--text-muted);font-size:13.8px;">
+            Build the autonomous proof-search loop with hierarchical decomposition, premise retrieval, deterministic
+            tactic escalation, and strict token/time budgets.
+          </p>
+          <ul class="checklist">
+            <li><input type="checkbox" id="m9"/><label for="m9">Implement Lemma DAG Planner generating isolated per-lemma Lean files with typed interfaces and minimal imports.</label></li>
+            <li><input type="checkbox" id="m10"/><label for="m10">Build Iterative Prover Worker with tactic escalation ladder (<code>omega/simp/grind</code> → structured proof → premise lookup → stuck-goal splitting).</label></li>
+            <li><input type="checkbox" id="m11"/><label for="m11">Add lightweight local + Mathlib lemma retrieval index (BM25 + type-signature matching) to eliminate hallucinated theorem names.</label></li>
+            <li><input type="checkbox" id="m12"/><label for="m12">Add automated Stage 6 <code>lake shake --fix</code> + verify/rollback pass before handing off candidate <code>Solution.lean</code> to Zone C.</label></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase" data-phase="4">
+        <div class="phase-head">
+          <div class="phase-title">Phase 4 · Four Production Engineering Blueprints + Conformance Bridges</div>
+          <div class="phase-meta">Weeks 8–10 · Deliverable: 4 Verified Reference Apps</div>
+        </div>
+        <div class="phase-body">
+          <p style="margin:0 0 8px;color:var(--text-muted);font-size:13.8px;">
+            Prove end-to-end utility on real engineering artifacts—not toy math exercises—paired with differential
+            conformance against real production code.
+          </p>
+          <ul class="checklist">
+            <li><input type="checkbox" id="m13"/><label for="m13"><strong>Blueprint 1 (Smart Contract):</strong> ERC-4626 Vault + Constant-Product AMM solvency &amp; rounding safety + Foundry differential trace oracle.</label></li>
+            <li><input type="checkbox" id="m14"/><label for="m14"><strong>Blueprint 2 (Protocol):</strong> Single-decree BFT / Raft election safety + Merkle consistency proof + JSON trace validator.</label></li>
+            <li><input type="checkbox" id="m15"/><label for="m15"><strong>Blueprint 3 (Compiler Pass):</strong> Verified 64-bit SSA constant folding &amp; peephole rewrites + random AST differential fuzzer.</label></li>
+            <li><input type="checkbox" id="m16"/><label for="m16"><strong>Blueprint 4 (State Machine):</strong> Double-entry idempotent payment ledger &amp; matching-engine invariant suite + live Python/Rust shadow checker.</label></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase" data-phase="5">
+        <div class="phase-head">
+          <div class="phase-title">Phase 5 · CI/CD Productionization, Diff-Aware Re-Proving &amp; Evals</div>
+          <div class="phase-meta">Weeks 11–12 · Deliverable: GitHub Action + 40-Task Eval Suite</div>
+        </div>
+        <div class="phase-body">
+          <p style="margin:0 0 8px;color:var(--text-muted);font-size:13.8px;">
+            Make proof-carrying verification feel like a normal developer workflow: incremental re-proving on PR diffs,
+            cached artifacts, and transparent cost/pass-rate telemetry.
+          </p>
+          <ul class="checklist">
+            <li><input type="checkbox" id="m17"/><label for="m17">Ship reusable GitHub Actions workflow (<code>pcvh-palomar-gate.yml</code>) posting axiom list, spec hash, and verification badge to PRs.</label></li>
+            <li><input type="checkbox" id="m18"/><label for="m18">Implement PR diff-aware incremental proof repair (only re-synthesize lemmas invalidated by a spec or code change).</label></li>
+            <li><input type="checkbox" id="m19"/><label for="m19">Curate 40-invariant engineering eval benchmark (10 per domain, including 8 intentionally buggy specs to benchmark Stage 2 falsification recall).</label></li>
+            <li><input type="checkbox" id="m20"/><label for="m20">Publish telemetry report: pass@1 / pass@budget, median token cost, gate latency, and zero-cheat audit certification.</label></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7: METRICS & COST -->
+    <section id="metrics">
+      <h3 class="sec-title"><span class="sec-num">07</span> Success Metrics, Cost Envelope &amp; Key Risks</h3>
+      <p class="sec-lead">
+        Concrete engineering gates that distinguish a genuinely practical verification tool from an academic demo.
+      </p>
+
+      <div class="grid-3">
+        <div class="card">
+          <h4>Soundness &amp; Gate Targets</h4>
+          <ul>
+            <li><strong>0% false acceptance:</strong> 12/12 red-team cheating proofs rejected deterministically.</li>
+            <li><strong>&lt; 60 s CI gate latency:</strong> Enabled by targeted imports + <code>lake shake</code> + cached <code>.olean</code>s.</li>
+            <li><strong>100% reproducible:</strong> Offline dual-kernel replay from pinned <code>spec.lock.json</code>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Agent Economics &amp; Efficacy</h4>
+          <ul>
+            <li><strong>&gt; 90% bug-spec catch rate:</strong> Stage 2 falsifier catches false invariants in &lt;15s before spending prover tokens.</li>
+            <li><strong>&ge; 70% auto-proof rate:</strong> On the 40-invariant engineering benchmark without human intervention.</li>
+            <li><strong>&lt; $2 median cost / invariant:</strong> Achieved via fast local Lean feedback + small-context lemma decomposition.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Top Risks &amp; Practical Mitigations</h4>
+          <ul>
+            <li><strong>Spec-writing friction:</strong> Provide domain DSL templates &amp; an interactive Spec-Interview assistant (still human-approved &amp; audited!).</li>
+            <li><strong>Hard inductive invariants:</strong> Allow engineers to supply a 5-line strengthening hint without writing proof tactics.</li>
+            <li><strong>Model-code gap:</strong> Enforce differential trace fuzzing as a co-requirement of the attestation JSON.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout warn" style="margin-top:20px;">
+        <strong>Recommended Immediate Next Step (Week 1 Sprint):</strong> Start directly with <strong>Phase 1 + Blueprint 4
+        (Idempotent Double-Entry Payment Ledger)</strong> inside <code>pcvh/</code>.
+        We already have the isolated Lean 4.33.1 toolchain and our tested <code>lean-orch</code> scheduler running in this workspace—so we can
+        stand up a working, red-team-tested Palomar verification gate and prove our first real engineering invariant in a single session.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Theme toggle
+    const root = document.documentElement;
+    const themeBtn = document.getElementById("theme-toggle");
+    themeBtn.addEventListener("click", () => {
+      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      themeBtn.textContent = next === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme";
+    });
+
+    // Domain blueprint tabs
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+      });
+    });
+
+    // Threat model severity filter
+    document.querySelectorAll(".filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".filter-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const sev = btn.dataset.sev;
+        document.querySelectorAll("#threat-table tbody tr").forEach((row) => {
+          row.style.display = (sev === "all" || row.dataset.sev === sev) ? "" : "none";
+        });
+      });
+    });
+
+    // Roadmap collapsible phases + interactive progress tracker (saved in localStorage)
+    document.querySelectorAll(".phase-head").forEach((head) => {
+      head.addEventListener("click", () => {
+        head.parentElement.classList.toggle("collapsed");
+      });
+    });
+
+    const STORAGE_KEY = "pcvh_roadmap_checks_v1";
+    const boxes = Array.from(document.querySelectorAll(".checklist input[type='checkbox']"));
+    const progText = document.getElementById("prog-text");
+    const progFill = document.getElementById("prog-fill");
+
+    function loadProgress() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        boxes.forEach((cb) => {
+          if (saved[cb.id]) cb.checked = true;
+        });
+      } catch (_) {}
+      updateProgress();
+    }
+
+    function updateProgress() {
+      let done = 0;
+      const state = {};
+      boxes.forEach((cb) => {
+        const li = cb.closest("li");
+        if (cb.checked) {
+          done++;
+          li.classList.add("done");
+          state[cb.id] = true;
+        } else {
+          li.classList.remove("done");
+        }
+      });
+      progText.textContent = `${done} / ${boxes.length}`;
+      progFill.style.width = `${Math.round((done / boxes.length) * 100)}%`;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+    }
+
+    boxes.forEach((cb) => cb.addEventListener("change", updateProgress));
+    loadProgress();
+
+    // Copy buttons on code blocks
+    document.querySelectorAll(".copy-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const code = btn.closest(".code-block").querySelector("pre").innerText;
+        try {
+          await navigator.clipboard.writeText(code);
+          const orig = btn.textContent;
+          btn.textContent = "Copied!";
+          setTimeout(() => (btn.textContent = orig), 1400);
+        } catch (_) {}
+      });
+    });
+
+    // Scrollspy for sidebar nav
+    const navLinks = Array.from(document.querySelectorAll("#toc a"));
+    const sections = navLinks.map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+    window.addEventListener("scroll", () => {
+      const y = window.scrollY + 120;
+      let current = sections[0];
+      for (const s of sections) {
+        if (s.offsetTop <= y) current = s;
+      }
+      navLinks.forEach((a) => {
+        a.classList.toggle("active", a.getAttribute("href") === "#" + current.id);
+      });
+    }, { passive: true });
+  </script>
+</body>
+</html>

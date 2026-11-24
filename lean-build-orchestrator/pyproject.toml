@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lean-build-orchestrator"
+version = "0.1.0"
+description = "Windows / Low-RAM Lean 4 import minimizer (lake shake) and commit-charge-aware Lake build orchestrator"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+lean-orch = "lean_orch.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["lean_orch*"]

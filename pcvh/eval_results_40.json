@@ -1,0 +1,488 @@
+{
+  "schema": "pcvh.eval40.v1",
+  "timestamp_utc": "2026-11-24T11:22:07.786099+00:00",
+  "total_tasks": 40,
+  "sound_tasks": 32,
+  "buggy_tasks": 8,
+  "buggy_caught_stage2": 8,
+  "falsification_recall_pct": 100.0,
+  "sound_false_refutations": 0,
+  "sound_proved": 32,
+  "sound_palomar_verified": 32,
+  "sound_auto_prove_pct": 100.0,
+  "false_acceptance_count": 0,
+  "total_duration_s": 31.79,
+  "axioms_used": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "per_domain": {
+    "Smart Contracts": {
+      "sound_total": 8,
+      "sound_verified": 8,
+      "buggy_total": 2,
+      "buggy_caught": 2
+    },
+    "Protocols": {
+      "sound_total": 8,
+      "sound_verified": 8,
+      "buggy_total": 2,
+      "buggy_caught": 2
+    },
+    "Compilers": {
+      "sound_total": 8,
+      "sound_verified": 8,
+      "buggy_total": 2,
+      "buggy_caught": 2
+    },
+    "State Machines": {
+      "sound_total": 8,
+      "sound_verified": 8,
+      "buggy_total": 2,
+      "buggy_caught": 2
+    }
+  },
+  "results": [
+    {
+      "task_id": "defi_01_amm_k_monotonic",
+      "domain": "Smart Contracts",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier2",
+      "palomar_verified": true,
+      "latency_s": 0.576
+    },
+    {
+      "task_id": "defi_02_amm_output_bounded",
+      "domain": "Smart Contracts",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier2",
+      "palomar_verified": true,
+      "latency_s": 0.774
+    },
+    {
+      "task_id": "defi_03_vault_fee_capped",
+      "domain": "Smart Contracts",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier2",
+      "palomar_verified": true,
+      "latency_s": 1.135
+    },
+    {
+      "task_id": "defi_04_vault_redeem_solvency",
+      "domain": "Smart Contracts",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier2",
+      "palomar_verified": true,
+      "latency_s": 1.864
+    },
+    {
+      "task_id": "defi_05_escrow_release_nonneg",
+      "domain": "Smart Contracts",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "defi_06_timelock_monotonic",
+      "domain": "Smart Contracts",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "defi_07_stake_reward_nonneg",
+      "domain": "Smart Contracts",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "defi_08_slippage_guard",
+      "domain": "Smart Contracts",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "defi_09_BUGGY_unguarded_withdraw",
+      "domain": "Smart Contracts",
+      "is_buggy": true,
+      "falsification": "REFUTED",
+      "counterexample": "(0, 1)",
+      "proved": false,
+      "tier_used": "stage2-falsifier",
+      "palomar_verified": false,
+      "latency_s": 0.121
+    },
+    {
+      "task_id": "defi_10_BUGGY_fee_overcharge",
+      "domain": "Smart Contracts",
+      "is_buggy": true,
+      "falsification": "REFUTED",
+      "counterexample": "(10001, 10001)",
+      "proved": false,
+      "tier_used": "stage2-falsifier",
+      "palomar_verified": false,
+      "latency_s": 0.121
+    },
+    {
+      "task_id": "proto_01_bft_quorum_bound",
+      "domain": "Protocols",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier0",
+      "palomar_verified": true,
+      "latency_s": 0.182
+    },
+    {
+      "task_id": "proto_02_raft_term_monotonic",
+      "domain": "Protocols",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "proto_03_nonce_replay_guard",
+      "domain": "Protocols",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "proto_04_seq_window_bounds",
+      "domain": "Protocols",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "proto_05_ttl_decrement_safe",
+      "domain": "Protocols",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "proto_06_threshold_sig_count",
+      "domain": "Protocols",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "proto_07_merkle_depth_positive",
+      "domain": "Protocols",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier0",
+      "palomar_verified": true,
+      "latency_s": 0.198
+    },
+    {
+      "task_id": "proto_08_lease_renewal_valid",
+      "domain": "Protocols",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "proto_09_BUGGY_bft_2f_threshold",
+      "domain": "Protocols",
+      "is_buggy": true,
+      "falsification": "REFUTED",
+      "counterexample": "n=7, f=3, q1=5, q2=5",
+      "proved": false,
+      "tier_used": "stage2-falsifier",
+      "palomar_verified": false,
+      "latency_s": 0.121
+    },
+    {
+      "task_id": "proto_10_BUGGY_nonce_replay",
+      "domain": "Protocols",
+      "is_buggy": true,
+      "falsification": "REFUTED",
+      "counterexample": "(0, 0)",
+      "proved": false,
+      "tier_used": "stage2-falsifier",
+      "palomar_verified": false,
+      "latency_s": 0.121
+    },
+    {
+      "task_id": "comp_01_add_zero_right",
+      "domain": "Compilers",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier0",
+      "palomar_verified": true,
+      "latency_s": 0.182
+    },
+    {
+      "task_id": "comp_02_mul_one_left",
+      "domain": "Compilers",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier0",
+      "palomar_verified": true,
+      "latency_s": 0.182
+    },
+    {
+      "task_id": "comp_03_sub_self_zero",
+      "domain": "Compilers",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier0",
+      "palomar_verified": true,
+      "latency_s": 0.182
+    },
+    {
+      "task_id": "comp_04_double_neg",
+      "domain": "Compilers",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier0",
+      "palomar_verified": true,
+      "latency_s": 0.182
+    },
+    {
+      "task_id": "comp_05_strength_mul2",
+      "domain": "Compilers",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "comp_06_bool_demorgan",
+      "domain": "Compilers",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier0",
+      "palomar_verified": true,
+      "latency_s": 0.198
+    },
+    {
+      "task_id": "comp_07_clamp_bounds",
+      "domain": "Compilers",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "comp_08_add_comm_assoc",
+      "domain": "Compilers",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier0",
+      "palomar_verified": true,
+      "latency_s": 0.182
+    },
+    {
+      "task_id": "comp_09_BUGGY_sub_comm",
+      "domain": "Compilers",
+      "is_buggy": true,
+      "falsification": "REFUTED",
+      "counterexample": "(0, 1)",
+      "proved": false,
+      "tier_used": "stage2-falsifier",
+      "palomar_verified": false,
+      "latency_s": 0.121
+    },
+    {
+      "task_id": "comp_10_BUGGY_div_assoc",
+      "domain": "Compilers",
+      "is_buggy": true,
+      "falsification": "REFUTED",
+      "counterexample": "a=8, b=4, c=2",
+      "proved": false,
+      "tier_used": "stage2-falsifier",
+      "palomar_verified": false,
+      "latency_s": 0.121
+    },
+    {
+      "task_id": "fsm_01_transfer_conservation",
+      "domain": "State Machines",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier0",
+      "palomar_verified": true,
+      "latency_s": 0.182
+    },
+    {
+      "task_id": "fsm_02_three_leg_fee_conservation",
+      "domain": "State Machines",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier0",
+      "palomar_verified": true,
+      "latency_s": 0.182
+    },
+    {
+      "task_id": "fsm_03_rate_limiter_cap",
+      "domain": "State Machines",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "fsm_04_rate_limiter_consume",
+      "domain": "State Machines",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "fsm_05_orderbook_fill_bounds",
+      "domain": "State Machines",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "fsm_06_margin_liquidation_trigger",
+      "domain": "State Machines",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "fsm_07_circuit_breaker_trip",
+      "domain": "State Machines",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "fsm_08_queue_capacity_bound",
+      "domain": "State Machines",
+      "is_buggy": false,
+      "falsification": "PASSED",
+      "counterexample": "",
+      "proved": true,
+      "tier_used": "tier1",
+      "palomar_verified": true,
+      "latency_s": 0.224
+    },
+    {
+      "task_id": "fsm_09_BUGGY_fee_leak",
+      "domain": "State Machines",
+      "is_buggy": true,
+      "falsification": "REFUTED",
+      "counterexample": "(1, 1, 1, 1)",
+      "proved": false,
+      "tier_used": "stage2-falsifier",
+      "palomar_verified": false,
+      "latency_s": 0.121
+    },
+    {
+      "task_id": "fsm_10_BUGGY_bucket_overflow",
+      "domain": "State Machines",
+      "is_buggy": true,
+      "falsification": "REFUTED",
+      "counterexample": "(1, 1, 1)",
+      "proved": false,
+      "tier_used": "stage2-falsifier",
+      "palomar_verified": false,
+      "latency_s": 0.121
+    }
+  ]
+}

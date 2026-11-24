@@ -1,0 +1,8 @@
+name = "bft_merkle_blueprint"
+defaultTargets = ["Specs.Bft.Challenge", "Solution"]
+
+[[lean_lib]]
+name = "Specs"
+
+[[lean_lib]]
+name = "Solution"

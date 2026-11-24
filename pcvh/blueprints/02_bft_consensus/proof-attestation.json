@@ -1,0 +1,33 @@
+{
+  "schema": "pcvh.attestation.v1",
+  "timestamp_utc": "2026-11-24T11:19:29.409428+00:00",
+  "spec_name": "blueprint02-bft-consensus-merkle",
+  "verdict": "VERIFIED",
+  "spec_bundle_sha256": "6c198d932aec503ff6eafd5805fb15e0657611c65c9beace3d53fb8e6971b3cd",
+  "toolchain": "leanprover/lean4:v4.33.1",
+  "verified_theorems": [
+    "bft_agreement_safety",
+    "bft_quorum_intersection_honest",
+    "bft_spec_nonvacuous",
+    "merkle_build_complete",
+    "merkle_verify_sound"
+  ],
+  "axioms_used": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "checks": {
+    "tcb_manifest": "PASS",
+    "tcb_overlay": "PASS (4 immutable TCB files stamped)",
+    "static_audit": "PASS (2 files scanned)",
+    "lean_kernel_build": "PASS",
+    "palomar_comparator": "PASS (5 theorems DefEq, axioms=['Classical.choice', 'Quot.sound', 'propext'])",
+    "nonvacuity_witness": "PASS",
+    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; nanoda runs in Linux CI)",
+    "differential_conformance": "PASS (500/500 BFT+Merkle differential traces matched bit-for-bit)"
+  },
+  "failure_reasons": [],
+  "duration_s": 12.105,
+  "attestation_sha256": "85077481dc0c3b353c59be28bee1c7fecede4002d02d94ce84189e2b5fd32a09"
+}

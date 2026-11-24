@@ -1,0 +1,39 @@
+# Local toolchains & upstream formal-math checkout (preserved locally, excluded from git)
+/.elan/
+/formal-math/
+/elan.zip
+/elan-tmp/
+/vp_vnp_build.log
+
+# Lean 4 / Lake build caches & compiled binaries
+**/.lake/
+*.olean
+*.olean.private
+*.olean.server
+*.ilean
+*.ir
+*.setup.json
+*.trace
+
+# Runtime tool caches & local TCB snapshots (spec.lock.json remains tracked)
+.lean-orch-state.json
+.lean-orch-backups/
+.pcvh_diff_cache.json
+.pcvh_tcb_snapshot/
+
+# Python caches & packaging artifacts
+**/__pycache__/
+*.py[cod]
+*$py.class
+**/.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# OS & editor files
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
