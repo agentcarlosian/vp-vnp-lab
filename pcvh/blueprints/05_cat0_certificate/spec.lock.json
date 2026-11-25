@@ -1,9 +1,10 @@
 {
-  "schema": "pcvh.spec-lock.v1",
+  "schema": "pcvh.spec-lock.v2",
   "name": "blueprint05-cat0-socp-certificate",
-  "pinned_at": "2026-11-24T17:43:33.637305+00:00",
-  "spec_bundle_sha256": "a2fc96a52fcb87e7bf21cdc1e700a8ff25019f1d2af206032d473f923b07c58c",
+  "pinned_at": "2026-11-25T02:48:14.727768+00:00",
+  "spec_bundle_sha256": "ddfb763a27493cce4d729de931b8c4c22251dd6eca504e22088bfea870fa28b7",
   "files": {
+    "pcvh.toml": "62779fb1d9c4931a42edba28c09150996c533de36f9f3b07e3edd480afd2fe44",
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
     "Specs/Cat0/Statement.lean": "2fff150c12fde74ed6b64e8e65ca860bc46ac102575233c1608ae54852b0388c",
     "Specs/Cat0/Challenge.lean": "289a39a4562bd6ca247ded2d67f77e7365cbf62c8ef57176941d4dde1e901c93",

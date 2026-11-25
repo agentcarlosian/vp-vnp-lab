@@ -226,7 +226,7 @@ def run_diff_aware_reprove(
         run_shake=False,  # preserve incremental lemma imports cleanly
     )
     att_path = attestation_out or (cfg.project_root / "proof-attestation.json")
-    gate_res = run_palomar_gate(cfg, lean_bin=lean_bin, run_conformance=True, attestation_out=att_path)
+    gate_res = run_palomar_gate(cfg, trusted_local=True, lean_bin=lean_bin, run_conformance=True, attestation_out=att_path)
 
     if gate_res.verdict == "VERIFIED":
         cache_fp.write_text(

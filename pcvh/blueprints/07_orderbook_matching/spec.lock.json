@@ -1,12 +1,14 @@
 {
-  "schema": "pcvh.spec-lock.v1",
+  "schema": "pcvh.spec-lock.v2",
   "name": "blueprint07-limit-orderbook-and-margin",
-  "pinned_at": "2026-11-25T00:10:47.262422+00:00",
-  "spec_bundle_sha256": "5dc412dc1204211ec17b285161fbb1866dbbe9477837cd3b604bf800d8ca213b",
+  "pinned_at": "2026-11-25T02:48:14.803850+00:00",
+  "spec_bundle_sha256": "2f5d3e775496f4e1a24cf5ef84d6ad7b348a13b994eb6b3d30715132a4569cbc",
   "files": {
+    "pcvh.toml": "1fea01102a5cd86670f819de49a256c75ba14fc97bd12e6af7fe2f0cdce0bbda",
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
     "Specs/OrderBook/Statement.lean": "46d8a02545f4a66b0e9f6b9d1d1ed1f81e841ed95eded8c47f50620b8543a429",
     "Specs/OrderBook/Challenge.lean": "29c71d4170c85e69b6dba6e5030f3dcbe893186963adb60984fe3868f7405483",
-    "lakefile.toml": "739cc650fc43f60d7eb49bcf1f2f85b3080fb08c4e82c3761ed16e2a7d89be9b"
+    "lakefile.toml": "739cc650fc43f60d7eb49bcf1f2f85b3080fb08c4e82c3761ed16e2a7d89be9b",
+    "conformance_fuzz.py": "bc7f9b1ba14d9c645de72ab30b357b9a1de50d1ab42a3afac78405de55453336"
   }
 }

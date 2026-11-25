@@ -168,7 +168,7 @@ def synthesize_and_verify_cat0_blueprint(
     cfg = load_spec_config(blueprint_dir)
     pin_tcb_manifest(cfg, save_snapshot=True)
     gate_res = run_palomar_gate(
-        cfg,
+        cfg, trusted_local=True,
         lean_bin=lean_bin,
         run_conformance=False,
         attestation_out=blueprint_dir / "proof-attestation.json",

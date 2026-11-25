@@ -1,13 +1,15 @@
 {
-  "schema": "pcvh.spec-lock.v1",
+  "schema": "pcvh.spec-lock.v2",
   "name": "blueprint04-double-entry-ledger",
-  "pinned_at": "2026-11-24T17:43:21.797384+00:00",
-  "spec_bundle_sha256": "16512e620b9e97db6538964f50f11652bc4fbf5f62dfc784fabd4cdf354ffb98",
+  "pinned_at": "2026-11-25T02:48:14.689631+00:00",
+  "spec_bundle_sha256": "659206bf631ac41d6096944c6af045770bd08f0dde138796c13a8c05a56f0dff",
   "files": {
+    "pcvh.toml": "1f6939d0679de55f2a19a7b79fd307d4cbc2ec0f8c30f2c7bfbf42714463378c",
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
     "Specs/Ledger/Statement.lean": "83bd1326e9199252b39961c5e4f276aed2861752f8e88c2eb9d279ff48e991d0",
     "Specs/Ledger/Challenge.lean": "f08db9bc8279d9ecaa698ddfeb49a78f3457e0c0533c74ba00ca8f59172d3300",
     "lakefile.toml": "244a73a9ec12f18446018fa91251f378b2cbc8dce7bc530a08c3717ecf22824b",
-    "lake-manifest.json": "defd12d2bd62b7562122818ac4a09a66a37a691a647053b8d6736110be0260bc"
+    "lake-manifest.json": "defd12d2bd62b7562122818ac4a09a66a37a691a647053b8d6736110be0260bc",
+    "conformance_fuzz.py": "d6159ebb7b0cf7ad2d2c5ac053fbd5b2260a1c160634ae1b6cefdb2ca1499fa4"
   }
 }

@@ -303,7 +303,7 @@ def test_phase6_ed25519_dsse_signing_verification_and_tamper_rejection(tmp_path:
     att_fp = dest / "proof-attestation.json"
 
     gate = run_palomar_gate(
-        cfg,
+        cfg, trusted_local=True,
         lean_bin=LOCAL_LEAN_BIN,
         run_conformance=False,
         sign_key_path=kp.private_key_path,
@@ -350,7 +350,7 @@ def test_phase6_dual_kernel_runner_strict_enforcement_and_export_replay(tmp_path
     monkeypatch.delenv("COMPARATOR_NANODA", raising=False)
     monkeypatch.delenv("COMPARATOR_BIN", raising=False)
     if not (shutil.which("lean4export") and (shutil.which("nanoda_bin") or shutil.which("nanoda"))):
-        strict_gate = run_palomar_gate(cfg, lean_bin=LOCAL_LEAN_BIN, run_conformance=False, require_dual_kernel=True)
+        strict_gate = run_palomar_gate(cfg, trusted_local=True, lean_bin=LOCAL_LEAN_BIN, run_conformance=False, require_dual_kernel=True)
         assert strict_gate.verdict == "REJECTED"
         assert "FAIL" in strict_gate.checks["external_second_kernel"]
 

@@ -1,12 +1,14 @@
 {
-  "schema": "pcvh.spec-lock.v1",
+  "schema": "pcvh.spec-lock.v2",
   "name": "blueprint08-zk-gadgets-and-replay-window",
-  "pinned_at": "2026-11-25T00:10:48.924726+00:00",
-  "spec_bundle_sha256": "a7d39dcf8574794ac29c8b67ded19f32eeed61b89122c9c8c8d9a72cc0bcc137",
+  "pinned_at": "2026-11-25T02:48:14.843027+00:00",
+  "spec_bundle_sha256": "6052290d01aa0535e1ea43ea495b7207edf167d6659375f8998e60322e19bd9b",
   "files": {
+    "pcvh.toml": "a30ebbb979b07f1f1470d5036775d8cdab478b886df6c40bbe7fe80f3b3dabd1",
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
     "Specs/ZkReplay/Statement.lean": "b84a7589bff45834383de6d9bc064c066b2446c363992fc70c8c9b05309814b4",
     "Specs/ZkReplay/Challenge.lean": "8c81249226ad376dd7e760097aee22573d3bf686959542230f20a4a70bd692bd",
-    "lakefile.toml": "c93120e1512bedf2dd54b4e01a813700795c1c36547485853895fe6f12846a76"
+    "lakefile.toml": "c93120e1512bedf2dd54b4e01a813700795c1c36547485853895fe6f12846a76",
+    "conformance_fuzz.py": "e99fd79bb6e545abcc6d0c25af7f2f063e951fa7b7000f0fabb5566120fa86d6"
   }
 }

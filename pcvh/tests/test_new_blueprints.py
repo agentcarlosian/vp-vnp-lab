@@ -36,7 +36,7 @@ def test_blueprint06_ai_agent_capability_guard_typescript_verified():
     bp = PKG_ROOT / "blueprints" / "06_agent_tool_guard"
     cfg = load_spec_config(bp)
     res = run_palomar_gate(
-        cfg,
+        cfg, trusted_local=True,
         lean_bin=LOCAL_LEAN_BIN,
         run_conformance=True,
         attestation_out=bp / "proof-attestation.json",
@@ -51,7 +51,7 @@ def test_blueprint07_orderbook_and_margin_rust_verified():
     bp = PKG_ROOT / "blueprints" / "07_orderbook_matching"
     cfg = load_spec_config(bp)
     res = run_palomar_gate(
-        cfg,
+        cfg, trusted_local=True,
         lean_bin=LOCAL_LEAN_BIN,
         run_conformance=True,
         attestation_out=bp / "proof-attestation.json",
@@ -66,7 +66,7 @@ def test_blueprint08_zk_gadgets_and_replay_window_verified():
     bp = PKG_ROOT / "blueprints" / "08_zk_and_replay_window"
     cfg = load_spec_config(bp)
     res = run_palomar_gate(
-        cfg,
+        cfg, trusted_local=True,
         lean_bin=LOCAL_LEAN_BIN,
         run_conformance=True,
         attestation_out=bp / "proof-attestation.json",

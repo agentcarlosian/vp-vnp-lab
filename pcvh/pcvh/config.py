@@ -42,11 +42,12 @@ class SpecConfig:
     @property
     def tcb_rel_paths(self) -> List[str]:
         base = [
+            "pcvh.toml",
             "lean-toolchain",
             self.statement_rel,
             self.challenge_rel,
         ]
-        for cand in ("lakefile.toml", "lakefile.lean", "lake-manifest.json"):
+        for cand in ("lakefile.toml", "lakefile.lean", "lake-manifest.json", "conformance_fuzz.py"):
             if (self.project_root / cand).exists():
                 base.append(cand)
         for ex in self.extra_tcb_files:

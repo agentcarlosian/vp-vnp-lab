@@ -14,7 +14,7 @@ import tempfile
 import time
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from ..config import SpecConfig
+from ..config import SpecConfig, load_spec_config
 from .crypto import sign_attestation_ed25519
 from .dual_kernel import run_dual_kernel_verification
 from .manifest import (
@@ -28,8 +28,10 @@ from .static_audit import StaticAuditResult, scan_untrusted_lean_files
 def resolve_lean_bin(project_root: pathlib.Path, lean_bin: Optional[pathlib.Path] = None) -> pathlib.Path:
     project_root = pathlib.Path(project_root).resolve()
     exe = "lake.exe" if os.name == "nt" else "lake"
-    if lean_bin is not None and (lean_bin / exe).exists():
-        return lean_bin
+    if lean_bin is not None:
+        if not (lean_bin / exe).is_file():
+            raise FileNotFoundError(f"Selected toolchain is missing {exe}: {lean_bin}")
+        return lean_bin.resolve()
 
     tc_fp = project_root / "lean-toolchain"
     tc_dir = None
@@ -188,10 +190,12 @@ class GateResult:
     signature_envelope: Optional[Dict[str, object]] = None
     raw_logs: Dict[str, str] = field(default_factory=dict)
 
+    timestamp_utc: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+
     def to_attestation_dict(self) -> Dict[str, object]:
         body: Dict[str, object] = {
             "schema": "pcvh.attestation.v1",
-            "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "timestamp_utc": self.timestamp_utc,
             "spec_name": self.spec_name,
             "verdict": self.verdict,
             "spec_bundle_sha256": self.spec_bundle_sha256,
@@ -249,70 +253,70 @@ def _run_with_transient_oom_retry(
     return last_proc
 
 
+def write_attestation(path: pathlib.Path, payload: Dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    output = tempfile.NamedTemporaryFile(dir=path.parent, delete=False, mode="w", encoding="utf-8")
+    temporary = pathlib.Path(output.name)
+    try:
+        with output:
+            json.dump(payload, output, indent=2)
+            output.write("\n")
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def run_palomar_gate(
     cfg: SpecConfig,
     *,
     lean_bin: Optional[pathlib.Path] = None,
     trusted_tcb_source: Optional[pathlib.Path] = None,
     run_conformance: bool = True,
-    enforce_working_tree_tcb_match: bool = True,
+    trusted_local: bool = False,
+    expected_spec_sha256: Optional[str] = None,
     require_dual_kernel: Optional[bool] = None,
     sign_key_path: Optional[pathlib.Path] = None,
     sign_key_id: Optional[str] = None,
     attestation_out: Optional[pathlib.Path] = None,
 ) -> GateResult:
-    """Execute the full Zero-Trust Palomar Verification Gate against an untrusted candidate project."""
+    """Native gate for explicitly trusted workspaces or an isolated verifier worker."""
     t0 = time.time()
     checks: Dict[str, str] = {}
     failures: List[str] = []
     raw_logs: Dict[str, str] = {}
 
-    # 1. Verify TCB lock manifest against working tree
-    man = verify_tcb_manifest(cfg)
-    if not man.lock_exists:
-        checks["tcb_manifest"] = "FAIL (missing spec.lock.json)"
-        failures.append("TCB lock file spec.lock.json is missing; run `pcvh pin` first.")
-        return GateResult(
-            verdict="REJECTED",
-            spec_name=cfg.name,
-            spec_bundle_sha256="",
-            toolchain=cfg.lean_toolchain,
-            failure_reasons=failures,
-            checks=checks,
-            duration_s=time.time() - t0,
-        )
+    def rejected(reason: str, digest: str = "") -> GateResult:
+        result = GateResult(verdict="REJECTED", spec_name=cfg.name, spec_bundle_sha256=digest,
+                            toolchain=cfg.lean_toolchain, failure_reasons=[reason], raw_logs=raw_logs,
+                            checks=checks, duration_s=time.time() - t0)
+        if trusted_local and attestation_out is not None:
+            write_attestation(attestation_out, result.to_attestation_dict())
+        return result
 
-    if not man.ok:
+    if not trusted_local:
+        return rejected("Native execution requires a trusted local workspace. Use pcvh verify for isolated execution.")
+    man = verify_tcb_manifest(cfg)
+    if not man.ok or (expected_spec_sha256 is not None and man.spec_bundle_sha256 != expected_spec_sha256):
         detail = f"mismatched={man.mismatched_files} missing={man.missing_files}"
         checks["tcb_manifest"] = f"TAMPER_DETECTED ({detail})"
-        if enforce_working_tree_tcb_match:
-            failures.append(f"TCB tampering detected in working tree: {detail}")
-    else:
-        checks["tcb_manifest"] = "PASS"
-
-    # 2. Construct isolated overlay workspace with immutable TCB files stamped on top
-    tcb_src = trusted_tcb_source or (cfg.project_root / TCB_SNAPSHOT_DIR)
-    if not man.ok and not tcb_src.exists():
-        failures.append(
-            "TCB mismatch in working tree and no trusted .pcvh_tcb_snapshot exists to restore clean TCB."
-        )
+        return rejected(f"TCB manifest or expected digest mismatch: {detail}", man.spec_bundle_sha256)
+    checks["tcb_manifest"] = "PASS"
+    snapshot = cfg.project_root / TCB_SNAPSHOT_DIR
+    tcb_src = trusted_tcb_source or (snapshot if snapshot.is_dir() else None)
     with tempfile.TemporaryDirectory(prefix="pcvh_gate_") as tmp:
         ws = pathlib.Path(tmp) / "workspace"
         try:
-            _, overlaid = build_isolated_overlay_workspace(cfg, ws, trusted_tcb_source=tcb_src)
+            _, overlaid = build_isolated_overlay_workspace(cfg, ws, man, trusted_tcb_source=tcb_src)
             checks["tcb_overlay"] = f"PASS ({len(overlaid)} immutable TCB files stamped)"
         except Exception as exc:
             checks["tcb_overlay"] = f"FAIL ({exc})"
-            failures.append(f"TCB overlay failed: {exc}")
-            return GateResult(
-                verdict="REJECTED",
-                spec_name=cfg.name,
-                spec_bundle_sha256=man.spec_bundle_sha256,
-                toolchain=cfg.lean_toolchain,
-                failure_reasons=failures,
-                checks=checks,
-                duration_s=time.time() - t0,
-            )
+            return rejected(f"TCB overlay failed: {exc}", man.spec_bundle_sha256)
+
+        original_root = cfg.project_root
+        cfg = load_spec_config(ws)
+        staged_manifest = verify_tcb_manifest(cfg)
+        if not staged_manifest.ok or staged_manifest.spec_bundle_sha256 != man.spec_bundle_sha256:
+            return rejected("Staged specification manifest mismatch", man.spec_bundle_sha256)
 
         # 3. Static Anti-Cheating Audit on all non-TCB Lean files in overlay workspace
         st_audit: StaticAuditResult = scan_untrusted_lean_files(ws, cfg)
@@ -320,11 +324,12 @@ def run_palomar_gate(
             checks["static_audit"] = f"FAIL ({len(st_audit.violations)} violations)"
             for v in st_audit.violations:
                 failures.append(f"Static audit violation [{v.rule}] {v.file}:{v.line}: {v.snippet}")
+            return rejected("\n".join(failures), man.spec_bundle_sha256)
         else:
             checks["static_audit"] = f"PASS ({st_audit.files_scanned} files scanned)"
 
         # 4. Isolated Lean 4 Kernel Build (Challenge + Solution)
-        lean_bin_dir = resolve_lean_bin(cfg.project_root, lean_bin)
+        lean_bin_dir = resolve_lean_bin(original_root, lean_bin)
         lake_exe = lean_bin_dir / ("lake.exe" if os.name == "nt" else "lake")
         env = os.environ.copy()
         env["PATH"] = str(lean_bin_dir) + os.pathsep + env.get("PATH", "")
@@ -339,17 +344,7 @@ def run_palomar_gate(
         raw_logs["lake_build"] = build_out
         if build_proc.returncode != 0:
             checks["lean_kernel_build"] = f"FAIL (rc={build_proc.returncode})"
-            failures.append(f"Isolated Lean 4 build failed: {build_out.strip()[-800:]}")
-            return GateResult(
-                verdict="REJECTED",
-                spec_name=cfg.name,
-                spec_bundle_sha256=man.spec_bundle_sha256,
-                toolchain=cfg.lean_toolchain,
-                failure_reasons=failures,
-                checks=checks,
-                duration_s=time.time() - t0,
-                raw_logs=raw_logs,
-            )
+            return rejected(f"Isolated Lean 4 build failed: {build_out.strip()[-800:]}", man.spec_bundle_sha256)
         checks["lean_kernel_build"] = "PASS"
 
         # 5. Palomar Kernel Comparator (DefEq theorem types + strict axiom allowlist)
@@ -423,14 +418,14 @@ def run_palomar_gate(
             failures.append(f"Independent second kernel failed: {dk_res.detail}")
 
         # 8. Optional Differential Conformance Bridge (Lean model <-> production implementation)
-        if run_conformance and cfg.conformance_command:
+        if not failures and run_conformance and cfg.conformance_command:
             conf_env = env.copy()
             conf_env["PCVH_OVERLAY_WS"] = str(ws)
             conf_env["PCVH_LEAN_BIN"] = str(lean_bin_dir)
             conf_proc = subprocess.run(
                 cfg.conformance_command,
                 shell=True,
-                cwd=str(cfg.project_root),
+                cwd=str(ws),
                 env=conf_env,
                 capture_output=True,
                 text=True,
@@ -477,7 +472,6 @@ def run_palomar_gate(
         att = result.to_attestation_dict()
 
     if attestation_out is not None:
-        attestation_out.parent.mkdir(parents=True, exist_ok=True)
-        attestation_out.write_text(json.dumps(att, indent=2) + "\n", encoding="utf-8")
+        write_attestation(attestation_out, att)
 
     return result

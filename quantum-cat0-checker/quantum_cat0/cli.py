@@ -63,9 +63,9 @@ def cmd_check(args: argparse.Namespace) -> int:
     print()
     print("  2. Single-Restriction Asymptotic SLOCC Outer Bounds:")
     print(f"     Verdict:             {feas.verdict}")
-    print(f"     Min bipartition cut: {feas.min_cut_ratio:.4f}  (cut={feas.worst_cut_partition})")
+    print(f"     Best checked bipartition cut: {feas.min_cut_ratio:.4f}  (cut={feas.worst_cut_partition})")
     print(f"     Metric LP bound:     {feas.metric_lp_ratio:.4f}")
-    print(f"     CAT(0) spectral min: {feas.cat0_spectral_ratio:.4f}")
+    print(f"     Lowest sampled CAT(0) ratio: {feas.cat0_candidate_ratio:.4f}")
     for note in feas.notes:
         print(f"     Note: {note}")
     return 0

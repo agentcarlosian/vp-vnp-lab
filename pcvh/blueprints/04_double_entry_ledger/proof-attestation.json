@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-24T17:43:27.911516+00:00",
+  "timestamp_utc": "2026-11-25T03:04:53.005509+00:00",
   "spec_name": "blueprint04-double-entry-ledger",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "16512e620b9e97db6538964f50f11652bc4fbf5f62dfc784fabd4cdf354ffb98",
+  "spec_bundle_sha256": "659206bf631ac41d6096944c6af045770bd08f0dde138796c13a8c05a56f0dff",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "ledger_spec_nonvacuous",
@@ -19,8 +19,8 @@
   ],
   "checks": {
     "tcb_manifest": "PASS",
-    "tcb_overlay": "PASS (5 immutable TCB files stamped)",
-    "static_audit": "PASS (2 files scanned)",
+    "tcb_overlay": "PASS (0 immutable TCB files stamped)",
+    "static_audit": "PASS (1 files scanned)",
     "lean_kernel_build": "PASS",
     "palomar_comparator": "PASS (6 theorems DefEq, axioms=['Quot.sound', 'propext'])",
     "nonvacuity_witness": "PASS",
@@ -28,6 +28,6 @@
     "differential_conformance": "PASS (1000/1000 differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 6.114,
-  "attestation_sha256": "02baa2ba6540eafa395527626e9860179e405cff45403e28540f821252b612fe"
+  "duration_s": 17.141,
+  "attestation_sha256": "cab1e53466134124f89c1cf4b14c5c1768a273f53067cc55667c02e351f43882"
 }

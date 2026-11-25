@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-24T17:46:11.620910+00:00",
+  "timestamp_utc": "2026-11-25T03:04:15.955217+00:00",
   "spec_name": "blueprint02-bft-consensus-merkle",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "6c198d932aec503ff6eafd5805fb15e0657611c65c9beace3d53fb8e6971b3cd",
+  "spec_bundle_sha256": "ca66d049396e1d789b8e147062ad4c4720324b335e41b7576b45dde36fde6808",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "bft_agreement_safety",
@@ -19,8 +19,8 @@
   ],
   "checks": {
     "tcb_manifest": "PASS",
-    "tcb_overlay": "PASS (4 immutable TCB files stamped)",
-    "static_audit": "PASS (2 files scanned)",
+    "tcb_overlay": "PASS (0 immutable TCB files stamped)",
+    "static_audit": "PASS (1 files scanned)",
     "lean_kernel_build": "PASS",
     "palomar_comparator": "PASS (5 theorems DefEq, axioms=['Classical.choice', 'Quot.sound', 'propext'])",
     "nonvacuity_witness": "PASS",
@@ -28,6 +28,6 @@
     "differential_conformance": "PASS (500/500 BFT+Merkle differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 7.613,
-  "attestation_sha256": "2a0c9bc810fb36cca6098498e47b4d8d9e3455114ce12c6fc3720c27fb19edf5"
+  "duration_s": 15.293,
+  "attestation_sha256": "bca352bc0ca031e3b59565db7790e039cc9abea761512a668afee15642cccf25"
 }

@@ -15,9 +15,9 @@ Independent Lean 4.33.1 verification, formalization of **Remark N.6**, computati
 | Component | Result | Details |
 | --- | --- | --- |
 | **`vp-vnp` full local build + Remark N.6** | **323 / 323 modules + `remarkN6_unconditional` VERIFIED** | All 5 headline `Solution.*` theorems + our 891-line division-free Samuelson–Berkowitz formalization [`remark-n6-lean/RemarkN6.lean`](./remark-n6-lean/RemarkN6.lean) verified in Lean 4.33.1 on `[propext, Classical.choice, Quot.sound]` only (0 `sorry`, 0 warnings). |
-| **`pcvh` (Phases 1–6 + 8 Blueprints)** | **39 / 39 tests passing** | 12/12 red-team cheats + guillemet/metaprogramming anti-cheat, **8/8 blueprints (48 theorems, 6,000 live Python/Rust/TS traces)** Palomar-verified, Rust/TypeScript/Solidity/Python adapters (`pcvh init`), Anthropic/OpenAI/Ollama LLMs + best-first LSP tree search + parallel proving, `lean4export`+`nanoda` dual-kernel CI & Ed25519 DSSE signing, interactive `pcvh studio` Web UI, 40/40 live eval benchmark. |
+| **`pcvh` (Phases 1–6 + 8 Blueprints)** | **48 / 48 tests passing across native and Docker runs** | 12/12 red-team cheats + guillemet/metaprogramming anti-cheat, **8/8 blueprints (48 theorems, 6,000 live Python/Rust/TS traces)** Palomar-verified, Rust/TypeScript/Solidity/Python adapters (`pcvh init`), Anthropic/OpenAI/Ollama LLMs + best-first LSP tree search + parallel proving, `lean4export`+`nanoda` dual-kernel CI & Ed25519 DSSE signing, interactive `pcvh studio` Web UI, 40/40 live eval benchmark. |
 | **`lean-build-orchestrator`** | **8 / 8 tests passing** | Live Lean 4.33.1 build + native `lake shake --fix` + automatic `.olean` environment fallback + rollback safety. |
-| **`quantum-cat0-checker`** | **13 / 13 tests passing** | Exact $\sqrt{2}\times$ on $C_4$, $\sqrt{3}\times$ on $Q_3$, strict 3-way cone separations on $K_{2,3}$ & $3\times 3$ planar grid, permutation-invariant GHZ bounds, and `qcat0 certify` exact `Fraction`-verified Farkas dual certificates + standalone Lean 4 proof export. |
+| **`quantum-cat0-checker`** | **16 / 16 tests passing** | Exact $\sqrt{2}\times$ on $C_4$, $\sqrt{3}\times$ on $Q_3$, strict 3-way cone separations on $K_{2,3}$ & $3\times 3$ planar grid, permutation-invariant GHZ bounds, and `qcat0 certify` exact `Fraction`-verified Farkas dual certificates + standalone Lean 4 proof export. |
 | **Research experiments (`exp04`–`exp09`)** | **6 / 6 scripts passing** | Meixner–Frobenius crossing identity, Prop. E.1/M.2 `#SAT -> PERM/HC` compilers, Grassmannian Möbius contraction bound on $\mathrm{Mat}_\mu(\mathbb{F}_2)$, flat-case hub optimizer, $\mathrm{SL}_3(\mathbb{F}_2[s]/(s^2))$ coset tower, PIT & CAT(0) calculations. |
 
 ---
@@ -29,7 +29,7 @@ vp-vnp-lab/
 ├── pcvh/                         # Proof-Carrying Verification Harness (Phases 1–6, 8 blueprints, 40-task eval, Web Studio)
 │   ├── pcvh/                     #   tcb/ (Palomar + dual-kernel + Ed25519), adapters/, runtime/ (LSP), falsify/, agents/ (LLMs + tree search), ci/, eval/, studio/
 │   ├── blueprints/               #   01..08 (Vault/AMM, BFT, IR Opt, Ledger, CAT(0), TS Agent Guard, Rust OrderBook, ZK+Replay)
-│   ├── tests/                    #   39 live Lean 4.33.1 tests (12 red-team attacks, Phase 2–6, Rust/TS/Solidity adapters, Web Studio)
+│   ├── tests/                    #   Lean 4.33.1 integration, preflight policy and Docker verification tests
 │   ├── blueprints_showcase.html  #   Editorial 8-blueprint specification monograph
 │   ├── eval_dashboard.html       #   Interactive 40-invariant benchmark dashboard
 │   └── eval_results_40.json      #   Machine-readable benchmark results
@@ -54,15 +54,15 @@ vp-vnp-lab/
 ### 1. Proof-Carrying Verification Harness (`pcvh`)
 ```bash
 cd pcvh
-python -m pcvh verify blueprints/01_erc4626_vault
-python -m pcvh verify blueprints/02_bft_consensus
+python -m pcvh verify --trusted-local blueprints/01_erc4626_vault
+python -m pcvh verify --trusted-local blueprints/02_bft_consensus
 python -m pcvh prove  blueprints/03_ssa_peephole_opt
-python -m pcvh verify blueprints/04_double_entry_ledger
+python -m pcvh verify --trusted-local blueprints/04_double_entry_ledger
 python -m pcvh cert-cat0 blueprints/05_cat0_certificate
-python -m pcvh verify blueprints/06_agent_tool_guard
-python -m pcvh verify blueprints/07_orderbook_matching
-python -m pcvh verify blueprints/08_zk_and_replay_window
-python -m pcvh studio --root .
+python -m pcvh verify --trusted-local blueprints/06_agent_tool_guard
+python -m pcvh verify --trusted-local blueprints/07_orderbook_matching
+python -m pcvh verify --trusted-local blueprints/08_zk_and_replay_window
+python -m pcvh studio --trusted-local --root .
 python -m pytest -v tests/
 ```
 
