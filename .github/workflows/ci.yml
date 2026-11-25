@@ -28,6 +28,53 @@ jobs:
           export PCVH_TEST_IMAGE=$(docker image inspect pcvh-verifier:test --format '{{.Id}}')
           python -m pytest -q tests/test_verification_boundary.py
 
+  pcvh-installed-wheel:
+    name: PCVH installed-wheel Studio smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python scripts/check_studio_wheel.py
+
+  lean-orch-windows:
+    name: lean-orch native Windows smoke
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install and check Lean 4.33.1
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'lean-4.33.1-windows.zip'
+          $dest = Join-Path $env:RUNNER_TEMP 'lean-win'
+          curl.exe --fail --location --retry 3 https://github.com/leanprover/lean4/releases/download/v4.33.1/lean-4.33.1-windows.zip --output $zip
+          if ($LASTEXITCODE -ne 0) { throw 'Could not download the pinned Lean toolchain' }
+          Expand-Archive -Path $zip -DestinationPath $dest
+          $lean = @(Get-ChildItem -Path $dest -Recurse -File -Filter lean.exe | Where-Object {
+            Test-Path (Join-Path $_.DirectoryName 'lake.exe')
+          })
+          if ($lean.Count -ne 1) { throw 'Could not uniquely locate lean.exe and lake.exe' }
+          $bin = $lean[0].DirectoryName
+          $version = & $lean[0].FullName --version
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch 'version 4\.33\.1(,|\s|$)') { throw "Unexpected Lean version: $version" }
+          "PCVH_LEAN_BIN=$bin" >> $env:GITHUB_ENV
+      - name: Check native commit telemetry and miniature Lean builds
+        working-directory: lean-build-orchestrator
+        run: |
+          python -m pip install -e ".[dev]"
+          if ($LASTEXITCODE -ne 0) { throw 'lean-orch installation failed' }
+          python -m pytest -q -rs tests/test_lean_orch.py
+
   lean-orch-and-qcat0:
     name: lean-build-orchestrator & quantum-cat0-checker
     runs-on: ubuntu-latest
@@ -51,7 +98,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pytest numpy scipy cvxpy networkx psutil
 
-      - name: Test lean-build-orchestrator (8 tests incl. live Lean 4.33.1)
+      - name: Test lean-build-orchestrator (including live Lean 4.33.1)
         working-directory: lean-build-orchestrator
         run: python -m pytest -v tests/test_lean_orch.py
 
@@ -158,6 +205,8 @@ jobs:
 
   pcvh-dual-kernel-nanoda:
     name: PCVH Dual-Kernel (lean4export + nanoda) & Ed25519 Signing
+    env:
+      BLUEPRINTS: 01_erc4626_vault 02_bft_consensus 03_ssa_peephole_opt 04_double_entry_ledger 05_cat0_certificate 06_agent_tool_guard 07_orderbook_matching 08_zk_and_replay_window
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -197,19 +246,39 @@ jobs:
       - name: Verify blueprints under dual kernels
         working-directory: pcvh
         run: |
-          for bp in 01_erc4626_vault 02_bft_consensus 03_ssa_peephole_opt 04_double_entry_ledger 05_cat0_certificate 06_agent_tool_guard 07_orderbook_matching 08_zk_and_replay_window; do
+          evidence="$RUNNER_TEMP/pcvh-dual-kernel"
+          mkdir -p "$evidence"
+          for bp in $BLUEPRINTS; do
             echo "=== Dual-Kernel Verifying $bp ==="
+            mkdir -p "$evidence/$bp"
             python -m pcvh verify --trusted-local "blueprints/$bp" \
               --require-dual-kernel \
-              --attestation "blueprints/$bp/proof-attestation.json"
+              --attestation "$evidence/$bp/proof-attestation.json"
           done
 
       - name: Sign attestations from the trusted main branch
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         working-directory: pcvh
         run: |
-          python -m pcvh keygen --out-dir /tmp/pcvh-ci-keys
-          for att in blueprints/*/proof-attestation.json; do
-            python -m pcvh sign "$att" --key /tmp/pcvh-ci-keys/pcvh_signing.key.pem
-            python -m pcvh verify-sig "$att" --pubkey /tmp/pcvh-ci-keys/pcvh_signing.pub.pem
+          keys="$RUNNER_TEMP/pcvh-ci-keys"
+          evidence="$RUNNER_TEMP/pcvh-dual-kernel"
+          python -m pcvh keygen --out-dir "$keys"
+          for bp in $BLUEPRINTS; do
+            att="$evidence/$bp/proof-attestation.json"
+            python -m pcvh sign "$att" --key "$keys/pcvh_signing.key.pem"
+            python -m pcvh verify-sig "$att" --pubkey "$keys/pcvh_signing.pub.pem"
           done
+          cp "$keys/pcvh_signing.pub.pem" "$evidence/"
+          printf 'repository=%s\ncommit=%s\nrun_id=%s\nrun_attempt=%s\n' \
+            "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" > "$evidence/provenance.txt"
+
+      - name: Upload signed dual-kernel evidence and public key
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pcvh-dual-kernel-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/pcvh-dual-kernel/*/proof-attestation.json
+            ${{ runner.temp }}/pcvh-dual-kernel/pcvh_signing.pub.pem
+            ${{ runner.temp }}/pcvh-dual-kernel/provenance.txt
+          if-no-files-found: error

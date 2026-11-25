@@ -18,6 +18,13 @@ Meanwhile, Lean 4's built-in `lake shake` import minimizer requires `.olean` fil
 
 ## Quick Start
 
+From the repository root, install the tool into your active Python environment:
+`python -m pip install ./lean-build-orchestrator`.
+For a build or a shake, make the project’s Lean/Lake toolchain available. On Linux in
+heuristic or always-overcommit mode, the scheduler uses available RAM and swap
+as an estimate and still reports the raw commit counters separately.
+
+
 ```bash
 cd lean-build-orchestrator
 

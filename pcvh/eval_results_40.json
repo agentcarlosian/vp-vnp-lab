@@ -1,6 +1,24 @@
 {
-  "schema": "pcvh.eval40.v1",
+  "schema": "pcvh.eval40.v2",
   "timestamp_utc": "2026-11-24T17:47:32.962592+00:00",
+  "run_metadata": {
+    "source_revision": null,
+    "lean_toolchain": "leanprover/lean4:v4.33.1",
+    "platform": null,
+    "python_version": null
+  },
+  "methodology": {
+    "fixture_selection": "fixed_labeled_suite",
+    "proof_cohort": "prelabeled_sound_only",
+    "proof_search": "fixed_lean_tactic_bank",
+    "conformance_enabled": false,
+    "falsification_seed": 4040,
+    "samples_per_task": 40,
+    "targeted_probe_fixtures": [
+      "proto_09_BUGGY_bft_2f_threshold",
+      "comp_10_BUGGY_div_assoc"
+    ]
+  },
   "total_tasks": 40,
   "sound_tasks": 32,
   "buggy_tasks": 8,
@@ -10,7 +28,7 @@
   "sound_proved": 32,
   "sound_palomar_verified": 32,
   "sound_auto_prove_pct": 100.0,
-  "false_acceptance_count": 0,
+  "false_acceptance_count": null,
   "total_duration_s": 16.95,
   "axioms_used": [
     "Classical.choice",

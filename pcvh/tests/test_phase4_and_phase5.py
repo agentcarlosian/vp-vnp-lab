@@ -23,8 +23,8 @@ LOCAL_LEAN_BIN = detect_lean_bin(PKG_ROOT)
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
-def test_phase4_blueprint1_erc4626_vault_amm_verified():
-    bp = PKG_ROOT / "blueprints" / "01_erc4626_vault"
+def test_phase4_blueprint1_erc4626_vault_amm_verified(copy_blueprint):
+    bp = copy_blueprint("01_erc4626_vault")
     cfg = load_spec_config(bp)
     pin_tcb_manifest(cfg, save_snapshot=True)
     res = run_palomar_gate(cfg, trusted_local=True, lean_bin=LOCAL_LEAN_BIN, run_conformance=True, attestation_out=bp / "proof-attestation.json")
@@ -34,8 +34,8 @@ def test_phase4_blueprint1_erc4626_vault_amm_verified():
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
-def test_phase4_blueprint2_bft_consensus_merkle_verified():
-    bp = PKG_ROOT / "blueprints" / "02_bft_consensus"
+def test_phase4_blueprint2_bft_consensus_merkle_verified(copy_blueprint):
+    bp = copy_blueprint("02_bft_consensus")
     cfg = load_spec_config(bp)
     pin_tcb_manifest(cfg, save_snapshot=True)
     res = run_palomar_gate(cfg, trusted_local=True, lean_bin=LOCAL_LEAN_BIN, run_conformance=True, attestation_out=bp / "proof-attestation.json")
@@ -45,8 +45,8 @@ def test_phase4_blueprint2_bft_consensus_merkle_verified():
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
-def test_phase4_blueprint3_compiler_pass_with_ast_conformance_verified():
-    bp = PKG_ROOT / "blueprints" / "03_ssa_peephole_opt"
+def test_phase4_blueprint3_compiler_pass_with_ast_conformance_verified(copy_blueprint):
+    bp = copy_blueprint("03_ssa_peephole_opt")
     cfg = load_spec_config(bp)
     res = run_palomar_gate(cfg, trusted_local=True, lean_bin=LOCAL_LEAN_BIN, run_conformance=True, attestation_out=bp / "proof-attestation.json")
     assert res.verdict == "VERIFIED", f"Blueprint 3 failed: {res.failure_reasons}"
@@ -123,10 +123,10 @@ def test_phase5_diff_aware_incremental_reprove_preserves_unaffected_lemmas(tmp_p
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
-def test_phase5_40_invariant_engineering_eval_benchmark():
+def test_phase5_40_invariant_engineering_eval_benchmark(tmp_path):
     """Run all 40 engineering benchmark tasks live in Lean 4.33.1 and emit JSON + HTML telemetry dashboard."""
-    out_json = PKG_ROOT / "eval_results_40.json"
-    out_html = PKG_ROOT / "eval_dashboard.html"
+    out_json = tmp_path / "eval_results_40.json"
+    out_html = tmp_path / "eval_dashboard.html"
     summary = run_eval_benchmark_40(
         lean_bin=LOCAL_LEAN_BIN,
         out_json=out_json,
@@ -138,8 +138,37 @@ def test_phase5_40_invariant_engineering_eval_benchmark():
     assert summary.buggy_caught_stage2 == 8, f"Missed buggy specs: {[r for r in summary.results if r.is_buggy and r.falsification != 'REFUTED']}"
     assert summary.sound_false_refutations == 0
     assert summary.sound_palomar_verified == 32, f"Unproved sound tasks: {[(r.task_id, r.tier_used) for r in summary.results if not r.is_buggy and not r.palomar_verified]}"
-    assert summary.false_acceptance_count == 0
+    assert summary.false_acceptance_count is None
     assert out_json.exists() and out_html.exists()
     data = json.loads(out_json.read_text(encoding="utf-8"))
+    assert data["schema"] == "pcvh.eval40.v2"
+    assert data["false_acceptance_count"] is None
+    assert data["methodology"]["conformance_enabled"] is False
+    assert "Not measured" in out_html.read_text(encoding="utf-8")
     assert data["sound_auto_prove_pct"] == 100.0
     assert data["falsification_recall_pct"] == 100.0
+
+
+def test_published_eval40_snapshot_uses_current_renderer():
+    """Keep the published fixture numbers, methodology and route links in sync."""
+    from pcvh.eval.benchmark_40 import EvalBenchmarkSummary, EvalTaskResult, render_eval_dashboard_html
+
+    data = json.loads((PKG_ROOT / "eval_results_40.json").read_text(encoding="utf-8"))
+    fields = (
+        "total_tasks", "sound_tasks", "buggy_tasks", "buggy_caught_stage2",
+        "sound_false_refutations", "sound_proved", "sound_palomar_verified",
+        "total_duration_s", "axioms_used", "per_domain", "timestamp_utc",
+    )
+    metadata = data["run_metadata"]
+    summary = EvalBenchmarkSummary(
+        **{key: data[key] for key in fields},
+        results=[EvalTaskResult(**row) for row in data["results"]],
+        source_revision=metadata["source_revision"],
+        platform_description=metadata["platform"],
+        python_version=metadata["python_version"],
+        samples_per_task=data["methodology"]["samples_per_task"],
+    )
+    assert data == summary.to_dict()
+    dashboard = PKG_ROOT / "pcvh" / "studio" / "eval_dashboard.html"
+    assert dashboard.read_text(encoding="utf-8") == render_eval_dashboard_html(summary)
+    assert "Not measured" in render_eval_dashboard_html(summary)

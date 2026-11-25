@@ -4,4 +4,4 @@
 !README.md
 !pcvh/
 !pcvh/**/*.py
-!pcvh/studio/ui.html
+!pcvh/studio/*.html

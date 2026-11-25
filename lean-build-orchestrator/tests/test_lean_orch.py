@@ -55,10 +55,34 @@ LOCAL_LEAN_BIN = _detect_lean_bin()
 def test_memory_snapshot_live():
     snap = get_memory_snapshot()
     assert snap.physical_total_gb > 0
-    assert snap.commit_limit_gb >= snap.commit_total_gb
-    assert snap.commit_avail_gb >= 0
+    assert snap.commit_limit_gb > 0 and snap.commit_total_gb >= 0
+    assert snap.scheduler_headroom_gb >= 0
     if sys.platform == "win32":
+        assert snap.commit_limit_gb >= snap.commit_total_gb
         assert snap.source == "win32:GetPerformanceInfo"
+
+
+@pytest.mark.parametrize(("policy", "headroom"), [("0", 5.0), ("1", 5.0), ("2", 0.0)])
+def test_linux_overcommit_headroom_preserves_raw_counters(monkeypatch, policy, headroom):
+    import builtins
+    import io
+    from lean_orch import memory
+
+    meminfo = "MemTotal: 8388608 kB\nMemAvailable: 4194304 kB\nSwapFree: 1048576 kB\nCommitLimit: 4194304 kB\nCommitted_AS: 6291456 kB\n"
+    real_open = builtins.open
+    real_exists = memory.os.path.exists
+    real_read_text = pathlib.Path.read_text
+
+    monkeypatch.setattr(memory.sys, "platform", "linux")
+    monkeypatch.setattr(memory.os.path, "exists", lambda path: path == "/proc/meminfo" or real_exists(path))
+    monkeypatch.setattr(builtins, "open", lambda path, *a, **kw: io.StringIO(meminfo) if path == "/proc/meminfo" else real_open(path, *a, **kw))
+    monkeypatch.setattr(pathlib.Path, "read_text", lambda path, *a, **kw: policy if str(path) == "/proc/sys/vm/overcommit_memory" else real_read_text(path, *a, **kw))
+
+    snap = get_memory_snapshot()
+    assert snap.commit_total_gb == 6.0
+    assert snap.commit_limit_gb == 4.0
+    assert snap.commit_avail_gb == 0
+    assert snap.scheduler_headroom_gb == headroom
 
 
 def test_estimate_safe_workers():

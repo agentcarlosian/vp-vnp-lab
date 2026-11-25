@@ -186,7 +186,7 @@ class CommitAwareScheduler:
     def compute_effective_heavy_cap(self, snap: MemorySnapshot) -> int:
         if self.config.max_heavy_workers is not None:
             return max(1, self.config.max_heavy_workers)
-        usable = max(0.0, snap.commit_avail_gb - self.config.reserve_commit_gb)
+        usable = max(0.0, snap.scheduler_headroom_gb - self.config.reserve_commit_gb)
         cap = int(usable // max(0.5, self.dag.heavy_worker_gb))
         return max(1, min(self.config.max_workers, cap))
 
@@ -217,7 +217,7 @@ class CommitAwareScheduler:
             if age < self.config.ramp_up_window_s:
                 unmaterialized_gb += max(0.0, r.estimated_commit_gb - r.peak_commit_delta_gb)
 
-        effective_avail = snap.commit_avail_gb - unmaterialized_gb
+        effective_avail = snap.scheduler_headroom_gb - unmaterialized_gb
         # Always allow at least 1 worker if nothing is running and commit isn't critically exhausted
         if not running:
             return effective_avail >= min(w_gb * 0.65, max(0.5, snap.commit_limit_gb * 0.1))
@@ -228,7 +228,7 @@ class CommitAwareScheduler:
         sub = self.dag.reachable_subgraph(targets)
         snap = self.memory_probe()
         heavy_cap = self.compute_effective_heavy_cap(snap)
-        usable = max(0.5, snap.commit_avail_gb - self.config.reserve_commit_gb)
+        usable = max(0.5, snap.scheduler_headroom_gb - self.config.reserve_commit_gb)
         light_cap = max(1, min(self.config.max_workers, int(usable // max(0.2, self.dag.light_worker_gb))))
         medium_cap = max(1, min(self.config.max_workers, int(usable // max(0.5, self.dag.medium_worker_gb))))
 
@@ -444,7 +444,7 @@ class CommitAwareScheduler:
                     self._log(
                         f"  [OK {built_count}/{pending_total}] {w.module} ({w.weight_class}) "
                         f"in {dt:.1f}s (peak Δcommit={w.peak_commit_delta_gb:.2f}GB, "
-                        f"free={snap.commit_avail_gb:.1f}GB, elapsed={elapsed:.0f}s)"
+                        f"free={snap.scheduler_headroom_gb:.1f}GB, elapsed={elapsed:.0f}s)"
                     )
                 else:
                     if is_transient_memory_error(out) and w.attempt < self.config.max_retries:

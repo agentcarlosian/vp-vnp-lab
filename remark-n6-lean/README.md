@@ -27,28 +27,42 @@ After building all 323/323 modules of `anthropics/formal-math/vp-vnp` locally (9
 
 ## How to Reproduce Against `anthropics/formal-math`
 
-1. Clone [`anthropics/formal-math`](https://github.com/anthropics/formal-math) (Apache-2.0) and fetch its Mathlib cache inside `formal-math/vp-vnp`:
-   ```bash
-   git clone https://github.com/anthropics/formal-math.git
-   cd formal-math/vp-vnp
-   lake exe cache get
-   ```
-2. Copy the files from this directory into `formal-math/vp-vnp/`:
-   ```bash
-   cp ../../remark-n6-lean/RemarkN6.lean ./RemarkN6.lean
-   mkdir -p scripts
-   cp ../../remark-n6-lean/scripts/CheckRemarkN6.lean ./scripts/
-   cp ../../remark-n6-lean/scripts/CheckFullVerification.lean ./scripts/
-   ```
-3. Verify `RemarkN6.lean` against `Statement.lean` (takes ~1 minute):
-   ```bash
-   lake build Statement
-   lake env lean scripts/CheckRemarkN6.lean
-   ```
-4. For the full unconditional check (all 323 modules), build `Solution` (on Windows / low-RAM machines, use `../../scripts/build_lean_batched.py 1` or [`lean-build-orchestrator`](../lean-build-orchestrator/)) and run:
-   ```bash
-   lake env lean scripts/CheckFullVerification.lean
-   ```
+Run these commands from the root of your `vp-vnp-lab` clone. Prerequisites:
+Git, Python 3.11+, [elan](https://github.com/leanprover/elan) on `PATH`, and
+enough disk space for Lean and the Mathlib cache. The commands use a **disposable**
+sibling checkout, not your existing upstream working tree.
+
+```sh
+git init ../formal-math-n6
+git -C ../formal-math-n6 fetch --depth=1 https://github.com/anthropics/formal-math.git 11b6c7e3c927df2658f513b6b68ea7f8929c62c5
+git -C ../formal-math-n6 checkout --detach FETCH_HEAD
+python remark-n6-lean/reproduce.py ../formal-math-n6
+```
+
+This is the reproduction pin, not a claim about the exact upstream checkout
+used in the earlier local report. It uses Lean 4.33.1 and the same Mathlib
+revision recorded in that report.
+
+The helper fetches the pinned Mathlib cache, copies the extension and both check
+scripts into the disposable checkout's `vp-vnp/` directory, builds `Statement`,
+then explicitly compiles `RemarkN6.lean` to
+`.lake/build/lib/lean/RemarkN6.olean` before running `CheckRemarkN6.lean`.
+It checks the reported axioms for the determinant construction and the
+**conditional** Remark N.6 theorem. The [Ubuntu smoke workflow](../.github/workflows/remark-n6.yml)
+runs this short check without building `Solution`.
+
+For the **full composition**, use `--full` to build `Solution` and run
+`CheckFullVerification.lean` as well. This may be a long build.
+
+```sh
+python remark-n6-lean/reproduce.py ../formal-math-n6 --full --skip-cache
+```
+
+Use `--skip-cache` only after successfully fetching the Mathlib cache in that
+checkout. On Windows or a memory-constrained system, add `--batch-size 1` to
+the full command. That sets `VP_VNP_DIR` to the absolute upstream `vp-vnp/`
+path for [the batched builder](../scripts/build_lean_batched.py), regardless of
+where the clones live.
 
 ## Attribution & License
 

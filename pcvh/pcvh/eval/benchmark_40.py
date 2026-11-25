@@ -1,18 +1,20 @@
-"""40-Invariant Engineering Eval Benchmark Suite (10 per domain: 8 sound + 2 intentionally buggy).
+"""Fixed 40-fixture Lean regression benchmark.
 
-Runs REAL Lean 4.33.1 Stage-2 bounded falsification across all 40 specs, REAL autonomous proof
-synthesis across unrefuted invariants, and REAL Zero-Trust Palomar Gate verification, then emits
-both structured JSON telemetry (`eval_results_40.json`) and a standalone HTML dashboard
-(`eval_dashboard.html`).
+Stage 2 attempts bounded falsification on all fixtures (including two targeted
+witness probes). Only the pre-labeled sound cohort enters tactic-bank synthesis
+and the Palomar gate. The benchmark does not measure gate false acceptance or
+run implementation conformance.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 import datetime
+from html import escape
 import json
 import os
 import pathlib
+import platform
 import random
 import tempfile
 import time
@@ -270,11 +272,22 @@ class EvalBenchmarkSummary:
     sound_false_refutations: int
     sound_proved: int
     sound_palomar_verified: int
-    false_acceptance_count: int
     total_duration_s: float
     axioms_used: List[str]
     per_domain: Dict[str, Dict[str, int]]
     results: List[EvalTaskResult] = field(default_factory=list)
+    timestamp_utc: str = field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
+    source_revision: Optional[str] = None
+    platform_description: Optional[str] = None
+    python_version: Optional[str] = None
+    samples_per_task: int = 40
+
+    @property
+    def false_acceptance_count(self) -> None:
+        """Retain the legacy field name, but do not present an unmeasured zero."""
+        return None
 
     @property
     def falsification_recall_pct(self) -> float:
@@ -286,8 +299,26 @@ class EvalBenchmarkSummary:
 
     def to_dict(self) -> Dict[str, object]:
         return {
-            "schema": "pcvh.eval40.v1",
-            "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "schema": "pcvh.eval40.v2",
+            "timestamp_utc": self.timestamp_utc,
+            "run_metadata": {
+                "source_revision": self.source_revision,
+                "lean_toolchain": "leanprover/lean4:v4.33.1",
+                "platform": self.platform_description,
+                "python_version": self.python_version,
+            },
+            "methodology": {
+                "fixture_selection": "fixed_labeled_suite",
+                "proof_cohort": "prelabeled_sound_only",
+                "proof_search": "fixed_lean_tactic_bank",
+                "conformance_enabled": False,
+                "falsification_seed": 4040,
+                "samples_per_task": self.samples_per_task,
+                "targeted_probe_fixtures": [
+                    "proto_09_BUGGY_bft_2f_threshold",
+                    "comp_10_BUGGY_div_assoc",
+                ],
+            },
             "total_tasks": self.total_tasks,
             "sound_tasks": self.sound_tasks,
             "buggy_tasks": self.buggy_tasks,
@@ -419,16 +450,17 @@ def render_eval_dashboard_html(summary: EvalBenchmarkSummary) -> str:
             f"<td class='mono {kind_cls}'>{kind_txt}</td>"
             f"<td class='mono {out_cls}'>{out_txt}</td>"
             f"<td class='mono'>{detail[:74]}</td>"
-            f"<td class='mono num'>{r.latency_s:.2f}s</td></tr>"
+            f"<td class='mono num'>{round(r.latency_s, 3):.2f}s</td></tr>"
         )
 
     dom_rows = []
     for dom, stats in summary.per_domain.items():
         pct = round(100.0 * stats["sound_verified"] / max(1, stats["sound_total"]))
+        bug_pct = round(100.0 * stats["buggy_caught"] / max(1, stats["buggy_total"]))
         dom_rows.append(
             f"<tr><td>{dom}</td>"
             f"<td class='mono'>{stats['sound_verified']} / {stats['sound_total']} ({pct}%)</td>"
-            f"<td class='mono'>{stats['buggy_caught']} / {stats['buggy_total']} (100%)</td></tr>"
+            f"<td class='mono'>{stats['buggy_caught']} / {stats['buggy_total']} ({bug_pct}%)</td></tr>"
         )
 
     axioms_str = ", ".join(summary.axioms_used)
@@ -495,18 +527,22 @@ def render_eval_dashboard_html(summary: EvalBenchmarkSummary) -> str:
     </div>
   </div>
 
-  <h1>40-Invariant Autonomous Verification Benchmark</h1>
+  <h1>40-Fixture Lean Verification Benchmark</h1>
   <p class="lede">
-    Live Lean&nbsp;4.33.1 evaluation across 32 sound invariants and 8 seeded defective specifications
-    spanning smart contracts, consensus protocols, compiler passes, and state machines. Kernel axioms collected: <code>{axioms_str}</code>.
+    Fixed Lean&nbsp;4.33.1 fixture suite: 32 sound invariants and eight seeded defects.
+    Stage 2 checks all fixtures, including targeted witness probes for the BFT threshold and division associativity cases.
+    Only pre-labeled sound fixtures enter tactic-bank synthesis and the proof gate; implementation conformance is disabled.
+    Kernel axioms collected: <code>{axioms_str}</code>.
   </p>
 
   <dl class="ledger">
     <div><dt>Sound Auto-Proved</dt><dd>{summary.sound_palomar_verified} / {summary.sound_tasks} ({summary.sound_auto_prove_pct:.0f}%)</dd></div>
     <div><dt>Stage-2 Bug Recall</dt><dd>{summary.buggy_caught_stage2} / {summary.buggy_tasks} ({summary.falsification_recall_pct:.0f}%)</dd></div>
-    <div><dt>False Acceptances</dt><dd>{summary.false_acceptance_count} (0%)</dd></div>
-    <div><dt>Wall-Clock Time</dt><dd>{summary.total_duration_s:.1f}s</dd></div>
+    <div><dt>Gate False Acceptance</dt><dd>Not measured</dd></div>
+    <div><dt>Wall-Clock Time</dt><dd>{summary.total_duration_s:.2f}s</dd></div>
   </dl>
+  <p class="caption">Recorded <time>{escape(summary.timestamp_utc)}</time> · Source revision:
+    <code>{escape(summary.source_revision or "not recorded")}</code>.</p>
 
   <div class="caption">Table I — Breakdown by Engineering Domain</div>
   <table>
@@ -560,7 +596,8 @@ modeBtn.onclick = () => setMode(document.documentElement.getAttribute('data-mode
 }})();
 </script>
 </body>
-</html>"""
+</html>
+"""
 
 
 def run_eval_benchmark_40(
@@ -569,9 +606,10 @@ def run_eval_benchmark_40(
     out_json: Optional[pathlib.Path] = None,
     out_html: Optional[pathlib.Path] = None,
     samples_per_task: int = 40,
+    source_revision: Optional[str] = None,
 ) -> EvalBenchmarkSummary:
     """Execute all 40 engineering benchmark tasks live in Lean 4.33.1."""
-    t0 = time.time()
+    t0 = time.perf_counter()
     tasks = get_40_eval_tasks()
     rng = random.Random(4040)
 
@@ -671,7 +709,7 @@ def run_eval_benchmark_40(
                 if tid not in fals_status:
                     fals_status[tid] = ("PASSED", "")
 
-        # 3. Synthesize proofs for all unrefuted sound tasks using our general symbolic ladder
+        # 3. Synthesize proofs only for the pre-labeled sound cohort.
         sound_tasks = [t for t in tasks if not t.is_buggy]
         chall_lines = ["import EvalSpecs.Statement", "namespace Challenge", "open EvalDom", ""]
         sol_lines = ["import EvalSpecs.Statement", "namespace Solution", "open EvalDom", ""]
@@ -815,8 +853,11 @@ def run_eval_benchmark_40(
         sound_false_refutations=sound_false_ref,
         sound_proved=sound_proved_cnt,
         sound_palomar_verified=sound_ver_cnt,
-        false_acceptance_count=0,
-        total_duration_s=time.time() - t0,
+        total_duration_s=time.perf_counter() - t0,
+        source_revision=source_revision,
+        platform_description=platform.platform(),
+        python_version=platform.python_version(),
+        samples_per_task=samples_per_task,
         axioms_used=list(gate_res.axioms_used),
         per_domain=per_domain,
         results=results,

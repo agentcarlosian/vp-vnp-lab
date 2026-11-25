@@ -22,10 +22,11 @@ LOCAL_LEAN_BIN = detect_lean_bin(BLUEPRINT4_DIR)
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
-def test_blueprint4_full_palomar_gate_and_differential_conformance():
-    cfg = load_spec_config(BLUEPRINT4_DIR)
+def test_blueprint4_full_palomar_gate_and_differential_conformance(copy_blueprint):
+    bp = copy_blueprint(BLUEPRINT4_DIR.name)
+    cfg = load_spec_config(bp)
     pin_tcb_manifest(cfg, save_snapshot=True)
-    att_path = BLUEPRINT4_DIR / "proof-attestation.json"
+    att_path = bp / "proof-attestation.json"
 
     res = run_palomar_gate(
         cfg, trusted_local=True,

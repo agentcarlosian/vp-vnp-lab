@@ -20,8 +20,9 @@ LOCAL_LEAN_BIN = detect_lean_bin(BLUEPRINT5_DIR)
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
-def test_cvxpy_cat0_socp_to_palomar_verified_lean4_proof():
-    res = synthesize_and_verify_cat0_blueprint(BLUEPRINT5_DIR, lean_bin=LOCAL_LEAN_BIN)
+def test_cvxpy_cat0_socp_to_palomar_verified_lean4_proof(copy_blueprint):
+    bp = copy_blueprint(BLUEPRINT5_DIR.name)
+    res = synthesize_and_verify_cat0_blueprint(bp, lean_bin=LOCAL_LEAN_BIN)
     assert math.isclose(res.c4_rho_cat0, 1.0, rel_tol=1e-3)
     assert math.isclose(res.c4_compression_ratio, math.sqrt(2.0), rel_tol=1e-3)
     assert math.isclose(res.q3_rho_cat0, 1.0, rel_tol=2e-3)
@@ -36,4 +37,4 @@ def test_cvxpy_cat0_socp_to_palomar_verified_lean4_proof():
         "q3_cube_enflo_squared_bound",
     }
     assert set(gate.axioms_used).issubset({"propext", "Classical.choice", "Quot.sound"})
-    assert (BLUEPRINT5_DIR / "proof-attestation.json").exists()
+    assert (bp / "proof-attestation.json").exists()

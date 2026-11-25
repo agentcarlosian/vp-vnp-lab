@@ -32,8 +32,8 @@ def _has_node_or_tsx() -> bool:
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None or not _has_node_or_tsx(), reason="Lean 4.33.1 or Node.js missing")
-def test_blueprint06_ai_agent_capability_guard_typescript_verified():
-    bp = PKG_ROOT / "blueprints" / "06_agent_tool_guard"
+def test_blueprint06_ai_agent_capability_guard_typescript_verified(copy_blueprint):
+    bp = copy_blueprint("06_agent_tool_guard")
     cfg = load_spec_config(bp)
     res = run_palomar_gate(
         cfg, trusted_local=True,
@@ -47,8 +47,8 @@ def test_blueprint06_ai_agent_capability_guard_typescript_verified():
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None or not _has_cargo(), reason="Lean 4.33.1 or Rust Cargo missing")
-def test_blueprint07_orderbook_and_margin_rust_verified():
-    bp = PKG_ROOT / "blueprints" / "07_orderbook_matching"
+def test_blueprint07_orderbook_and_margin_rust_verified(copy_blueprint):
+    bp = copy_blueprint("07_orderbook_matching")
     cfg = load_spec_config(bp)
     res = run_palomar_gate(
         cfg, trusted_local=True,
@@ -62,8 +62,8 @@ def test_blueprint07_orderbook_and_margin_rust_verified():
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
-def test_blueprint08_zk_gadgets_and_replay_window_verified():
-    bp = PKG_ROOT / "blueprints" / "08_zk_and_replay_window"
+def test_blueprint08_zk_gadgets_and_replay_window_verified(copy_blueprint):
+    bp = copy_blueprint("08_zk_and_replay_window")
     cfg = load_spec_config(bp)
     res = run_palomar_gate(
         cfg, trusted_local=True,
