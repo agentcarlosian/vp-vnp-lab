@@ -1,0 +1,8 @@
+name = "orderbook_matching_blueprint"
+defaultTargets = ["Specs.OrderBook.Challenge", "Solution"]
+
+[[lean_lib]]
+name = "Specs"
+
+[[lean_lib]]
+name = "Solution"

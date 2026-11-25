@@ -1,0 +1,8 @@
+name = "zk_and_replay_blueprint"
+defaultTargets = ["Specs.ZkReplay.Challenge", "Solution"]
+
+[[lean_lib]]
+name = "Specs"
+
+[[lean_lib]]
+name = "Solution"

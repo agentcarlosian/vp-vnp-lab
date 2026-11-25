@@ -1,0 +1,27 @@
+[spec]
+name = "blueprint06-ai-agent-capability-guard"
+lean_toolchain = "leanprover/lean4:v4.33.1"
+statement = "Specs/AgentGuard/Statement.lean"
+challenge = "Specs/AgentGuard/Challenge.lean"
+challenge_module = "Specs.AgentGuard.Challenge"
+solution_module = "Solution"
+allowed_axioms = ["propext", "Classical.choice", "Quot.sound"]
+require_nonvacuity_witness = true
+nonvacuity_suffix = "nonvacuous"
+
+[target]
+language = "typescript"
+template = "agent_guard"
+
+[falsification]
+enabled = true
+lean_samples = 64
+
+[agent_loop]
+max_rounds_per_lemma = 8
+max_token_budget_usd = 5.0
+auto_lake_shake = true
+forbid_umbrella_imports = ["Mathlib", "Mathlib.Tactic", "Mathlib.All"]
+
+[conformance]
+command = "python conformance_fuzz.py --traces 1000"

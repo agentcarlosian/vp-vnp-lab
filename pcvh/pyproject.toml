@@ -19,3 +19,6 @@ pcvh = "pcvh.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["pcvh*"]
+
+[tool.setuptools.package-data]
+"pcvh.studio" = ["*.html"]

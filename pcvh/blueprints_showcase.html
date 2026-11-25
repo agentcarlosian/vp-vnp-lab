@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="paper">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PCVH — Eight Verified Engineering Specifications (Lean 4.33.1)</title>
+  <meta name="description" content="Eight production domain specifications kernel-verified in Lean 4.33.1 under the zero-trust Palomar gate and differentially tested across 6,000 live traces in Rust, TypeScript, Solidity, and Python." />
+  <meta property="og:title" content="PCVH — Eight Machine-Checked Engineering Specifications" />
+  <meta property="og:description" content="48 Lean 4.33.1 theorems (0 sorry) + 6,000 differential conformance traces spanning DeFi vaults, BFT consensus, compiler passes, payment ledgers, CAT(0) convex certificates, AI agent guardrails, Rust order books, and ZK circuits." />
+  <meta property="og:type" content="article" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23FAF8F4' stroke='%239A3820' stroke-width='2'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Georgia,serif' font-style='italic' font-size='18' fill='%23171614'%3E%C2%A7%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #FAF8F4;
+      --paper-recess: #F2EFE8;
+      --paper-hover: #ECE7DD;
+      --ink: #171614;
+      --ink-body: #2C2A26;
+      --ink-muted: #6E685F;
+      --ink-faint: #948D82;
+      --rule: #DCD6CA;
+      --rule-strong: #171614;
+      --accent: #9A3820;
+      --verified: #1E563B;
+      --syn-kw: #9A3820;
+      --syn-ty: #1E563B;
+      --syn-cm: #7D766B;
+      --syn-num: #6B4C1E;
+
+      --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+      --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    }
+
+    [data-mode="dusk"] {
+      --paper: #151413;
+      --paper-recess: #1D1C1A;
+      --paper-hover: #252320;
+      --ink: #EDE9E0;
+      --ink-body: #CFCAC0;
+      --ink-muted: #968F84;
+      --ink-faint: #6D675E;
+      --rule: #2E2C28;
+      --rule-strong: #D8D2C7;
+      --accent: #D47459;
+      --verified: #6BA888;
+      --syn-kw: #D47459;
+      --syn-ty: #7AB395;
+      --syn-cm: #7F796F;
+      --syn-num: #C8A46B;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink-body);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    .layout {
+      max-width: 1240px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 236px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; }
+      aside.toc {
+        position: static !important;
+        height: auto !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--rule);
+        padding: 24px 22px !important;
+      }
+      main.monograph { padding: 32px 22px 72px !important; }
+    }
+
+    /* ---- Left Margin Index ---- */
+    aside.toc {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      border-right: 1px solid var(--rule);
+      padding: 38px 24px 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .toc-kicker {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink);
+      font-weight: 500;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--rule-strong);
+      margin-bottom: 18px;
+    }
+
+    .toc-kicker span {
+      display: block;
+      color: var(--ink-muted);
+      font-size: 10.5px;
+      letter-spacing: 0.03em;
+      text-transform: none;
+      margin-top: 3px;
+    }
+
+    .toc-group {
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--ink-faint);
+      margin: 18px 0 6px;
+    }
+
+    .toc a {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      align-items: baseline;
+      text-decoration: none;
+      color: var(--ink-muted);
+      font-size: 13px;
+      line-height: 1.4;
+      padding: 5px 0;
+      border-left: 2px solid transparent;
+      padding-left: 8px;
+      margin-left: -10px;
+      transition: color 0.12s ease, border-color 0.12s ease;
+    }
+
+    .toc a:hover { color: var(--ink); }
+    .toc a.active {
+      color: var(--ink);
+      font-weight: 500;
+      border-left-color: var(--accent);
+    }
+
+    .toc-sec {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 13px;
+      color: var(--ink-faint);
+    }
+    .toc a.active .toc-sec { color: var(--accent); }
+
+    .toc-footer {
+      border-top: 1px solid var(--rule);
+      padding-top: 14px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .text-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+      cursor: pointer;
+      text-align: left;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .text-btn:hover { color: var(--ink); }
+
+    .studio-return {
+      display: inline !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      font-family: var(--mono) !important;
+      font-size: 11px !important;
+      color: var(--accent) !important;
+      text-decoration: none;
+    }
+    .studio-return:hover { text-decoration: underline; }
+
+    /* ---- Main Monograph Column ---- */
+    main.monograph {
+      padding: 48px 56px 96px;
+      max-width: 920px;
+    }
+
+    header.masthead {
+      border-top: 2px solid var(--rule-strong);
+      border-bottom: 1px solid var(--rule);
+      padding: 28px 0 30px;
+      margin-bottom: 36px;
+    }
+
+    .masthead-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: 18px;
+    }
+
+    .masthead h1 {
+      font-family: var(--serif);
+      font-weight: 500;
+      font-size: 40px;
+      line-height: 1.13;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin: 0 0 16px;
+    }
+
+    .masthead .lede {
+      font-family: var(--serif);
+      font-size: 19px;
+      line-height: 1.55;
+      color: var(--ink-body);
+      max-width: 66ch;
+      margin: 0 0 24px;
+    }
+
+    .colophon-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid var(--rule);
+      padding-top: 16px;
+      gap: 18px;
+      font-variant-numeric: tabular-nums;
+    }
+    @media (max-width: 680px) {
+      .colophon-strip { grid-template-columns: repeat(2, 1fr); }
+      .masthead h1 { font-size: 31px; }
+    }
+
+    .colophon-item dt {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink-muted);
+      margin-bottom: 2px;
+    }
+    .colophon-item dd {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: 23px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .colophon-item dd small {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+      font-weight: 400;
+      margin-left: 4px;
+    }
+
+    /* ---- Architecture & Index Section ---- */
+    section.prelim {
+      margin-bottom: 52px;
+    }
+
+    h2.sec-heading {
+      font-family: var(--serif);
+      font-weight: 500;
+      font-size: 24px;
+      color: var(--ink);
+      margin: 0 0 10px;
+      letter-spacing: -0.01em;
+    }
+
+    p.prose {
+      max-width: 68ch;
+      margin: 0 0 18px;
+      color: var(--ink-body);
+    }
+
+    figure.schematic {
+      margin: 22px 0 32px;
+      padding: 20px 22px 16px;
+      background: var(--paper-recess);
+      border-top: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+    }
+
+    figure.schematic svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    figure.schematic figcaption {
+      margin-top: 12px;
+      font-size: 12.5px;
+      color: var(--ink-muted);
+      font-family: var(--sans);
+    }
+    figure.schematic figcaption strong {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    /* ---- Master Index Table ---- */
+    .table-caption {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink-muted);
+      margin-bottom: 8px;
+    }
+
+    table.index-table,
+    table.thm-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    table.index-table {
+      border-top: 1.5px solid var(--rule-strong);
+      border-bottom: 1.5px solid var(--rule-strong);
+      margin-bottom: 16px;
+    }
+
+    table.index-table th,
+    table.thm-table th {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink-muted);
+      text-align: left;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--rule-strong);
+    }
+
+    table.index-table td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--rule);
+      vertical-align: baseline;
+    }
+
+    table.index-table tbody tr {
+      cursor: pointer;
+      transition: background 0.1s ease;
+    }
+    table.index-table tbody tr:hover {
+      background: var(--paper-recess);
+    }
+
+    table.index-table tfoot td {
+      padding: 9px 10px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--ink);
+      font-weight: 500;
+      border-top: 1px solid var(--rule-strong);
+    }
+
+    .sec-num-cell {
+      font-family: var(--serif);
+      font-style: italic;
+      color: var(--accent);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .mono-cell {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+
+    /* ---- Individual Blueprint Sections ---- */
+    article.blueprint {
+      border-top: 1.5px solid var(--rule-strong);
+      padding-top: 30px;
+      margin-top: 54px;
+    }
+
+    .bp-overline {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .bp-sec-label {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 16px;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .bp-sec-label span {
+      font-family: var(--mono);
+      font-style: normal;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink-muted);
+      margin-left: 8px;
+    }
+
+    .bp-status {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      color: var(--verified);
+    }
+
+    article.blueprint h3 {
+      font-family: var(--serif);
+      font-weight: 500;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: -0.015em;
+      color: var(--ink);
+      margin: 4px 0 12px;
+    }
+
+    .spec-ledger {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 22px;
+      padding: 9px 0;
+      border-top: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      margin-bottom: 22px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--ink-muted);
+    }
+    .spec-ledger b {
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    .editorial-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 720px) {
+      .editorial-columns { grid-template-columns: 1fr; gap: 16px; }
+    }
+
+    .ed-col {
+      font-size: 14.2px;
+      line-height: 1.62;
+    }
+    .ed-col + .ed-col {
+      border-left: 1px solid var(--rule);
+      padding-left: 28px;
+    }
+    @media (max-width: 720px) {
+      .ed-col + .ed-col { border-left: none; padding-left: 0; border-top: 1px solid var(--rule); padding-top: 14px; }
+    }
+
+    .ed-col h4 {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink);
+      margin: 0 0 6px;
+    }
+    .ed-col p { margin: 0; color: var(--ink-body); }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.87em;
+      background: var(--paper-recess);
+      padding: 1px 4px;
+      border-radius: 2px;
+      color: var(--ink);
+    }
+
+    /* ---- Theorem Inventory Table ---- */
+    table.thm-table {
+      margin-bottom: 22px;
+      border-top: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+    }
+    table.thm-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--rule);
+      vertical-align: top;
+      font-size: 13.5px;
+    }
+    table.thm-table tr:last-child td { border-bottom: none; }
+    table.thm-table td:first-child {
+      width: 38%;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    /* ---- Source Specimen Viewer ---- */
+    .specimen {
+      border: 1px solid var(--rule);
+      background: var(--paper-recess);
+    }
+
+    .specimen-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--rule);
+      padding: 0 14px;
+      background: var(--paper);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .specimen-tabs {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .spec-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 10px 0 8px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--ink-muted);
+      cursor: pointer;
+      margin-bottom: -1px;
+    }
+    .spec-tab:hover { color: var(--ink); }
+    .spec-tab.active {
+      color: var(--ink);
+      font-weight: 500;
+      border-bottom-color: var(--accent);
+    }
+
+    .copy-btn {
+      background: none;
+      border: none;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+      cursor: pointer;
+      padding: 4px 0;
+    }
+    .copy-btn:hover { color: var(--ink); text-decoration: underline; }
+
+    pre.spec-code {
+      margin: 0;
+      padding: 16px 18px;
+      font-family: var(--mono);
+      font-size: 12.3px;
+      line-height: 1.6;
+      overflow-x: auto;
+      display: none;
+      color: var(--ink);
+    }
+    pre.spec-code.active { display: block; }
+
+    .syn-kw { color: var(--syn-kw); font-weight: 500; }
+    .syn-ty { color: var(--syn-ty); }
+    .syn-cm { color: var(--syn-cm); font-style: italic; }
+    .syn-num { color: var(--syn-num); }
+    .math { font-family: var(--serif); font-size: 1.04em; white-space: nowrap; }
+    .math i { font-style: italic; }
+
+    .real-world-use {
+      background: var(--paper-recess);
+      border-left: 3px solid var(--accent);
+      padding: 13px 16px;
+      margin: 0 0 22px;
+      font-size: 14.3px;
+      line-height: 1.6;
+      color: var(--ink-body);
+    }
+    .real-world-use strong {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--accent);
+      margin-right: 6px;
+    }
+
+    .workflow-strip {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      border-top: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      margin: 20px 0 8px;
+    }
+    @media (max-width: 720px) {
+      .workflow-strip { grid-template-columns: 1fr; }
+    }
+    .wf-step {
+      padding: 14px 18px 14px 0;
+      border-bottom: 1px solid var(--rule);
+      font-size: 13.8px;
+      line-height: 1.58;
+    }
+    .wf-step:nth-child(even) {
+      border-left: 1px solid var(--rule);
+      padding-left: 20px;
+      padding-right: 0;
+    }
+    .wf-step:nth-last-child(-n+2) { border-bottom: none; }
+    @media (max-width: 720px) {
+      .wf-step:nth-child(even) { border-left: none; padding-left: 0; }
+      .wf-step:nth-last-child(2) { border-bottom: 1px solid var(--rule); }
+    }
+    .wf-step .wf-kicker {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink);
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    footer.colophon-end {
+      margin-top: 72px;
+      padding-top: 20px;
+      border-top: 1px solid var(--rule-strong);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc">
+      <div>
+        <div class="toc-kicker">
+          VP–VNP Lab · PCVH
+          <span>Specification Monograph</span>
+        </div>
+
+        <div class="toc-group">Preliminaries</div>
+        <a href="#what-is-pcvh" class="active"><span class="toc-sec">I.</span><span>What PCVH Is</span></a>
+        <a href="#trust-model"><span class="toc-sec">II.</span><span>Palomar Trust Model</span></a>
+        <a href="#index-table"><span class="toc-sec">III.</span><span>Index of Blueprints</span></a>
+
+        <div class="toc-group">Verified Specifications</div>
+        <a href="#bp01"><span class="toc-sec">§ 01</span><span>ERC-4626 Vault &amp; AMM</span></a>
+        <a href="#bp02"><span class="toc-sec">§ 02</span><span>BFT Quorum &amp; Merkle</span></a>
+        <a href="#bp03"><span class="toc-sec">§ 03</span><span>SSA Peephole Optimizer</span></a>
+        <a href="#bp04"><span class="toc-sec">§ 04</span><span>Double-Entry Ledger</span></a>
+        <a href="#bp05"><span class="toc-sec">§ 05</span><span>CAT(0) Dual Certificate</span></a>
+        <a href="#bp06"><span class="toc-sec">§ 06</span><span>AI Agent Tool Guard</span></a>
+        <a href="#bp07"><span class="toc-sec">§ 07</span><span>Limit Order Book</span></a>
+        <a href="#bp08"><span class="toc-sec">§ 08</span><span>ZK Gadgets &amp; Replay</span></a>
+      </div>
+
+      <div class="toc-footer">
+        <a class="studio-return" id="nav-studio-or-repo" href="https://github.com/agentcarlosian/vp-vnp-lab">GitHub Repository ↗</a>
+        <a class="studio-return" id="nav-eval-link" href="./eval/">Eval-40 Benchmark Report →</a>
+        <a class="studio-return" id="nav-repo-extra" href="https://github.com/agentcarlosian/vp-vnp-lab" target="_blank" rel="noopener" style="display:none;">GitHub Repository ↗</a>
+        <button class="text-btn" id="mode-toggle" type="button">Reading mode: Paper</button>
+        <div>Apache-2.0 · Lean 4.33.1</div>
+      </div>
+    </aside>
+
+    <main class="monograph">
+      <header class="masthead">
+        <div class="masthead-meta">
+          <span>Proof-Carrying Verification Harness (PCVH)</span>
+          <span>Toolchain: leanprover/lean4:v4.33.1</span>
+        </div>
+        <h1>Eight Machine-Checked Engineering Specifications</h1>
+        <p class="lede">
+          A collection of production domain specifications verified under zero-trust separation:
+          human-audited Lean&nbsp;4 invariants are cryptographically pinned, proved without custom axioms,
+          and differentially tested against shipping implementations in Rust, TypeScript, Solidity, and Python.
+        </p>
+
+        <dl class="colophon-strip">
+          <div class="colophon-item">
+            <dt>Specifications</dt>
+            <dd>8 / 8 <small>VERIFIED</small></dd>
+          </div>
+          <div class="colophon-item">
+            <dt>Kernel Theorems</dt>
+            <dd>48 <small>0 sorry</small></dd>
+          </div>
+          <div class="colophon-item">
+            <dt>Conformance</dt>
+            <dd>6,000 <small>traces</small></dd>
+          </div>
+          <div class="colophon-item">
+            <dt>Red-Team Suite</dt>
+            <dd>12 / 12 <small>rejected</small></dd>
+          </div>
+        </dl>
+      </header>
+
+      <!-- ==================== PRELIMINARIES ==================== -->
+      <section id="what-is-pcvh" class="prelim">
+        <h2 class="sec-heading">I. What PCVH Is</h2>
+        <p class="prose">
+          <strong>PCVH (Proof-Carrying Verification Harness)</strong> is a formal verification and differential-conformance
+          gate for shipping software. Unit tests and fuzzers sample finitely many inputs; catastrophic bugs in financial
+          ledgers, consensus thresholds, compiler passes, zero-knowledge circuits, and agent sandboxes hide in boundary
+          arithmetic, multi-step state aliasing, and rounding corners that random inputs rarely hit.
+        </p>
+        <p class="prose">
+          Traditionally, closing that gap with interactive theorem proving required human specialists to write and maintain
+          thousands of lines of brittle proof scripts. PCVH inverts the workflow: an engineer (or auditor) defines and pins
+          only a ~50-line domain specification in Lean&nbsp;4, autonomous proof search synthesizes the tactic proofs, and a
+          differential trace bridge checks the shipping Rust, TypeScript, Solidity, or Python implementation bit-for-bit
+          against that exact specification on every pull request.
+        </p>
+
+        <div class="workflow-strip">
+          <div class="wf-step">
+            <span class="wf-kicker">1 · Scaffold &amp; Pin (pcvh init / pcvh pin)</span>
+            Generates a paired Lean&nbsp;4 specification (<code>Statement.lean</code> + <code>Challenge.lean</code>),
+            production target skeleton (Rust, TypeScript, Solidity/Foundry, or Python), and SHA-256 lockfile (<code>spec.lock.json</code>).
+          </div>
+          <div class="wf-step">
+            <span class="wf-kicker">2 · Refute Fast (pcvh falsify)</span>
+            Before spending compute on proof search, Stage-2 bounded evaluation runs randomized and boundary witnesses in
+            Lean&nbsp;4 to refute defective specifications or false invariants in ~2 seconds with concrete counterexamples.
+          </div>
+          <div class="wf-step">
+            <span class="wf-kicker">3 · Synthesize &amp; Maintain (pcvh prove / diff-reprove)</span>
+            Decomposes lemmas along the call graph, applies symbolic tiers, live Lean&nbsp;4 LSP goal-state tree search,
+            and optional LLMs, and caches unaffected lemma proofs across pull requests.
+          </div>
+          <div class="wf-step">
+            <span class="wf-kicker">4 · Gate &amp; Attest (pcvh verify / pcvh studio)</span>
+            Rebuilds inside an isolated sandbox, verifies kernel definitional equality + dual-kernel replay + 500–1,000 live
+            target traces, and emits an Ed25519 DSSE-signed <code>proof-attestation.json</code>.
+          </div>
+        </div>
+      </section>
+
+      <section id="trust-model" class="prelim">
+        <h2 class="sec-heading">II. Palomar Zero-Trust Architecture</h2>
+        <p class="prose">
+          Automated provers and coding agents optimize aggressively for passing checks—including weakening definitions,
+          introducing sound-looking axioms, or proving vacuous implications with unreachable hypotheses. PCVH isolates
+          what a human reviewer must read (~50 lines of domain types and theorem signatures in Zone&nbsp;I) from untrusted
+          proof synthesis and production optimizations (Zone&nbsp;II), enforcing equivalence inside an ephemeral clean-room
+          comparator (Zone&nbsp;III).
+        </p>
+
+        <figure class="schematic">
+          <svg viewBox="0 0 820 156" role="img" aria-label="Three-zone Palomar verification architecture">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="currentColor" />
+              </marker>
+            </defs>
+            <g style="color: var(--ink);">
+              <!-- Zone I -->
+              <rect x="4" y="14" width="236" height="124" fill="none" stroke="currentColor" stroke-width="1.25" />
+              <line x1="4" y1="42" x2="240" y2="42" stroke="currentColor" stroke-width="0.75" />
+              <text x="16" y="32" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)" letter-spacing="0.06em">ZONE I · PINNED TCB</text>
+              <text x="16" y="64" font-family="Newsreader, Georgia, serif" font-size="15" font-weight="500" fill="currentColor">Human Specification</text>
+              <text x="16" y="85" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink-muted)">Statement.lean (~35 loc)</text>
+              <text x="16" y="103" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink-muted)">Challenge.lean (~25 loc)</text>
+              <text x="16" y="123" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--ink-faint)">SHA-256 → spec.lock.json</text>
+
+              <!-- Arrow I -> II -->
+              <line x1="240" y1="76" x2="286" y2="76" stroke="currentColor" stroke-width="1" marker-end="url(#arr)" />
+
+              <!-- Zone II -->
+              <rect x="292" y="14" width="236" height="124" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3" />
+              <line x1="292" y1="42" x2="528" y2="42" stroke="currentColor" stroke-width="0.75" />
+              <text x="304" y="32" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--ink-muted)" letter-spacing="0.06em">ZONE II · UNTRUSTED</text>
+              <text x="304" y="64" font-family="Newsreader, Georgia, serif" font-size="15" font-weight="500" fill="currentColor">Synthesis &amp; Target Code</text>
+              <text x="304" y="85" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink-muted)">Stage-2 Falsifier (#eval)</text>
+              <text x="304" y="103" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink-muted)">Solution.lean (LSP / LLM)</text>
+              <text x="304" y="123" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--ink-faint)">Rust · TS · Solidity · Py</text>
+
+              <!-- Arrow II -> III -->
+              <line x1="528" y1="76" x2="574" y2="76" stroke="currentColor" stroke-width="1" marker-end="url(#arr)" />
+
+              <!-- Zone III -->
+              <rect x="580" y="14" width="236" height="124" fill="none" stroke="currentColor" stroke-width="1.5" />
+              <line x1="580" y1="42" x2="816" y2="42" stroke="currentColor" stroke-width="0.75" />
+              <text x="592" y="32" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--verified)" letter-spacing="0.06em">ZONE III · PALOMAR GATE</text>
+              <text x="592" y="64" font-family="Newsreader, Georgia, serif" font-size="15" font-weight="500" fill="currentColor">Clean-Room Comparator</text>
+              <text x="592" y="85" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink-muted)">Kernel Meta.isDefEq + Axioms</text>
+              <text x="592" y="103" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink-muted)">nanoda Dual-Kernel Replay</text>
+              <text x="592" y="123" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--ink-faint)">Differential Trace + DSSE</text>
+            </g>
+          </svg>
+          <figcaption>
+            <strong>Figure 1.</strong> Zone III overwrites all specification files from the immutable TCB snapshot before invoking
+            <code>lake build</code>, checks kernel definitional equality (<code>Meta.isDefEq</code>) and standard axiom hygiene,
+            requires a concrete non-vacuity theorem, and executes randomized differential traces against the shipping runtime.
+          </figcaption>
+        </figure>
+
+        <div id="index-table" style="padding-top: 16px;">
+          <h2 class="sec-heading" style="margin-bottom: 12px;">III. Index of Verified Specifications</h2>
+          <div class="table-caption">Table I — Summary of Verified Specifications (§ 01 – § 08)</div>
+          <table class="index-table">
+            <thead>
+              <tr>
+                <th>Sec.</th>
+                <th>Specification</th>
+                <th>Domain</th>
+                <th>Target Runtime</th>
+                <th>Theorems</th>
+                <th>Traces</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr onclick="location.hash='#bp01'">
+                <td class="sec-num-cell">§ 01</td>
+                <td>ERC-4626 Share Vault &amp; Constant-Product AMM</td>
+                <td class="mono-cell">DeFi / Contracts</td>
+                <td class="mono-cell">Python · Solidity</td>
+                <td class="mono-cell">6</td>
+                <td class="mono-cell">1,000</td>
+              </tr>
+              <tr onclick="location.hash='#bp02'">
+                <td class="sec-num-cell">§ 02</td>
+                <td>Byzantine Quorum Intersection &amp; Merkle Inclusion</td>
+                <td class="mono-cell">Consensus</td>
+                <td class="mono-cell">Python</td>
+                <td class="mono-cell">5</td>
+                <td class="mono-cell">500</td>
+              </tr>
+              <tr onclick="location.hash='#bp03'">
+                <td class="sec-num-cell">§ 03</td>
+                <td>SSA Arithmetic Peephole Optimizer (Autonomous)</td>
+                <td class="mono-cell">Compilers</td>
+                <td class="mono-cell">Python AST</td>
+                <td class="mono-cell">6</td>
+                <td class="mono-cell">500</td>
+              </tr>
+              <tr onclick="location.hash='#bp04'">
+                <td class="sec-num-cell">§ 04</td>
+                <td>Idempotent Double-Entry Custody Ledger</td>
+                <td class="mono-cell">Payments</td>
+                <td class="mono-cell">Python · Rust · TS</td>
+                <td class="mono-cell">6</td>
+                <td class="mono-cell">1,000</td>
+              </tr>
+              <tr onclick="location.hash='#bp05'">
+                <td class="sec-num-cell">§ 05</td>
+                <td>Primal-Dual CAT(0) SOCP Proof Certificate</td>
+                <td class="mono-cell">Convex Opt.</td>
+                <td class="mono-cell">CVXPY → Lean 4</td>
+                <td class="mono-cell">4</td>
+                <td class="mono-cell">Exact Q</td>
+              </tr>
+              <tr onclick="location.hash='#bp06'">
+                <td class="sec-num-cell">§ 06</td>
+                <td>Capability-Scoped AI Agent Tool Gate &amp; Budget Guard</td>
+                <td class="mono-cell">Agent Security</td>
+                <td class="mono-cell">TypeScript (Node)</td>
+                <td class="mono-cell">7</td>
+                <td class="mono-cell">1,000</td>
+              </tr>
+              <tr onclick="location.hash='#bp07'">
+                <td class="sec-num-cell">§ 07</td>
+                <td>Price-Time Priority Limit Order Book &amp; Margin Engine</td>
+                <td class="mono-cell">Exchanges</td>
+                <td class="mono-cell">Rust (cargo)</td>
+                <td class="mono-cell">6</td>
+                <td class="mono-cell">1,000</td>
+              </tr>
+              <tr onclick="location.hash='#bp08'">
+                <td class="sec-num-cell">§ 08</td>
+                <td>R1CS Zero-Knowledge Gadgets &amp; Anti-Replay Window</td>
+                <td class="mono-cell">ZK &amp; NetSec</td>
+                <td class="mono-cell">Python 64-bit</td>
+                <td class="mono-cell">8</td>
+                <td class="mono-cell">1,000</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4">Total Verified Corpus (0 sorry, standard Lean kernel axioms only)</td>
+                <td>48</td>
+                <td>6,000</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== § 01 ==================== -->
+      <article id="bp01" class="blueprint">
+        <div class="bp-overline">
+          <div class="bp-sec-label">§ 01 <span>DeFi &amp; Smart Contracts</span></div>
+          <div class="bp-status">VERIFIED · 6 THEOREMS · 1,000 TRACES</div>
+        </div>
+        <h3>ERC-4626 Share Vault &amp; Constant-Product AMM</h3>
+        <div class="spec-ledger">
+          <span>Path: <b>pcvh/blueprints/01_erc4626_vault</b></span>
+          <span>Target: <b>Python / Solidity (Foundry)</b></span>
+          <span>Axioms: <b>propext, Quot.sound</b></span>
+        </div>
+
+        <div class="real-world-use">
+          <strong>Real-world use —</strong>
+          Prevents multimillion-dollar DeFi rounding-direction and share-inflation exploits (the exact bug class behind real ERC-4626 vault and AMM hacks). You can swap <code>prod_vault.py</code> for a Solidity/Foundry contract (<code>pcvh init my_vault --lang solidity --template vault</code>) or Rust pool module to gate smart-contract PRs before deployment or external audit.
+        </div>
+
+        <div class="editorial-columns">
+          <div class="ed-col">
+            <h4>Failure Mode Addressed</h4>
+            <p>
+              Eliminates integer rounding-direction inversions and ERC-4626 share-inflation / dust-arbitrage vulnerabilities,
+              where a depositor supplies <code>dA</code> assets and immediately redeems the newly minted shares for strictly
+              more than <code>dA</code>, draining passive liquidity providers.
+            </p>
+          </div>
+          <div class="ed-col">
+            <h4>Production Integration</h4>
+            <p>
+              Scaffold directly against Solidity/Foundry contracts (<code>pcvh init ./vault --lang solidity --template vault</code>)
+              or Rust/Python accounting modules to prove reserve non-drainability, constant-product <span class="math"><i>k</i></span>-monotonicity, and
+              round-trip solvency across all unsigned integer inputs.
+            </p>
+          </div>
+        </div>
+
+        <table class="thm-table">
+          <thead><tr><th>Theorem</th><th>Formal Guarantee</th></tr></thead>
+          <tbody>
+            <tr><td>amm_swap_preserves_k_monotonicity</td><td>Floor-rounded swap output preserves <span class="math"><i>x</i>′ · <i>y</i>′ ≥ <i>x</i> · <i>y</i></span> for all <span class="math"><i>x</i> &gt; 0</span> and <span class="math">Δ<i>x</i> ≥ 0</span>.</td></tr>
+            <tr><td>amm_swap_never_drains_reserve</td><td>No finite swap input <span class="math">Δ<i>x</i></span> reduces a positive reserve <span class="math"><i>y</i> &gt; 0</span> to zero (<span class="math"><i>y</i>′ &gt; 0</span>).</td></tr>
+            <tr><td>vault_deposit_preserves_share_price_floor</td><td>Deposits never dilute existing share value (<span class="math"><i>A</i> · <i>S</i>′ ≤ <i>A</i>′ · <i>S</i></span>).</td></tr>
+            <tr><td>vault_redeem_never_exceeds_assets</td><td>Redeeming <span class="math">sh ≤ <i>S</i></span> never withdraws more than total vault assets <span class="math"><i>A</i></span>.</td></tr>
+            <tr><td>vault_deposit_redeem_no_free_money</td><td>Immediate <code>deposit(dA) → previewRedeem</code> returns at most <code>dA</code>.</td></tr>
+            <tr><td>vault_spec_nonvacuous</td><td>Concrete swap (<span class="math">Δ<i>y</i> = 400</span>) and deposit/redeem witness establishing non-vacuity.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="specimen" data-tabs>
+          <div class="specimen-bar">
+            <div class="specimen-tabs">
+              <button class="spec-tab active" onclick="switchTab(this, 0)">Challenge.lean (TCB)</button>
+              <button class="spec-tab" onclick="switchTab(this, 1)">Solution.lean (Proof)</button>
+              <button class="spec-tab" onclick="switchTab(this, 2)">CLI &amp; Scaffolding</button>
+            </div>
+            <button class="copy-btn" onclick="copyActivePane(this)">Copy</button>
+          </div>
+          <pre class="spec-code active">theorem amm_swap_preserves_k_monotonicity (x y dx : Nat) (hx : 0 &lt; x) :
+    poolK { reserveX := x, reserveY := y } ≤ poolK (ammSwapXForY { reserveX := x, reserveY := y } dx).1 := by
+  sorry
+
+theorem vault_deposit_redeem_no_free_money (A S dA : Nat) (hA : 0 &lt; A) (hS : 0 &lt; S) :
+    let res := vaultDeposit { totalAssets := A, totalShares := S } dA
+    previewRedeem res.1 res.2 ≤ dA := by
+  sorry</pre>
+          <pre class="spec-code">theorem amm_swap_never_drains_reserve (x y dx : Nat) (hx : 0 &lt; x) (hy : 0 &lt; y) :
+    0 &lt; (ammSwapXForY { reserveX := x, reserveY := y } dx).1.reserveY := by
+  simp only [ammSwapXForY, ammAmountOut]
+  have hpos : 0 &lt; x * y := Nat.mul_pos hx hy
+  have hlt : y * dx &lt; (x + dx) * y := by
+    rw [Nat.add_mul, Nat.mul_comm dx y]; omega
+  have hdivlt : (y * dx) / (x + dx) &lt; y := Nat.div_lt_of_lt_mul hlt
+  omega</pre>
+          <pre class="spec-code">python -m pcvh verify blueprints/01_erc4626_vault
+python -m pcvh init ./solidity_vault --lang solidity --template vault
+python -m pcvh prove ./solidity_vault --workers 2</pre>
+        </div>
+      </article>
+
+      <!-- ==================== § 02 ==================== -->
+      <article id="bp02" class="blueprint">
+        <div class="bp-overline">
+          <div class="bp-sec-label">§ 02 <span>Distributed Consensus &amp; Authenticated Storage</span></div>
+          <div class="bp-status">VERIFIED · 5 THEOREMS · 500 TRACES</div>
+        </div>
+        <h3>Byzantine Quorum Intersection (<span class="math">3<i>f</i> &lt; <i>n</i></span>) &amp; Merkle Inclusion</h3>
+        <div class="spec-ledger">
+          <span>Path: <b>pcvh/blueprints/02_bft_consensus</b></span>
+          <span>Target: <b>Python Consensus &amp; Merkle Verifier</b></span>
+          <span>Axioms: <b>Classical.choice, propext, Quot.sound</b></span>
+        </div>
+
+        <div class="real-world-use">
+          <strong>Real-world use —</strong>
+          Blocks consensus split-brain and state-root forgery bugs in L1/L2 validators, rollup batch finalizers, and cross-chain multisig bridges—catching integer-division threshold slips (<code>votes &gt;= 2*n/3</code> vs. strict <code>3*votes &gt; 2*n</code>) and Merkle sibling-substitution flaws before protocol upgrades ship.
+        </div>
+
+        <div class="editorial-columns">
+          <div class="ed-col">
+            <h4>Failure Mode Addressed</h4>
+            <p>
+              Prevents off-by-one quorum threshold errors (such as <code>votes &gt;= (2 * n) / 3</code> in place of strict
+              <code>3 * votes &gt; 2 * n</code>) that allow <span class="math"><i>f</i></span> equivocating validators to finalize conflicting blocks at the
+              same height, alongside Merkle path leaf-substitution bugs.
+            </p>
+          </div>
+          <div class="ed-col">
+            <h4>Production Integration</h4>
+            <p>
+              Provides an inductive finite-list pigeonhole proof over arbitrary validator sets without external library
+              imports, paired with differential trace verification of Tendermint/HotStuff quorum tallies and Merkle inclusion proofs.
+            </p>
+          </div>
+        </div>
+
+        <table class="thm-table">
+          <thead><tr><th>Theorem</th><th>Formal Guarantee</th></tr></thead>
+          <tbody>
+            <tr><td>bft_quorum_intersection_honest</td><td>Under <span class="math">3<i>f</i> &lt; <i>n</i></span> and <span class="math">3|<i>Q</i><sub>1</sub>| &gt; 2<i>n</i>, 3|<i>Q</i><sub>2</sub>| &gt; 2<i>n</i></span>, at least one non-Byzantine validator lies in <span class="math"><i>Q</i><sub>1</sub> ∩ <i>Q</i><sub>2</sub></span>.</td></tr>
+            <tr><td>bft_agreement_safety</td><td>Honest single-vote consistency plus quorum intersection forces finalized values <span class="math"><i>v</i><sub>1</sub> = <i>v</i><sub>2</sub></span>.</td></tr>
+            <tr><td>merkle_verify_sound</td><td>Under collision-resistant hashing, identical root and sibling path imply identical leaf payloads.</td></tr>
+            <tr><td>merkle_build_complete</td><td>Every path produced by <code>buildMerkleProof</code> reconstructs <code>merkleRoot</code>.</td></tr>
+            <tr><td>bft_spec_nonvacuous</td><td>Concrete 4-validator cluster (<span class="math"><i>n</i> = 4, <i>f</i> = 1</span>) and 4-leaf Merkle witness.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="specimen" data-tabs>
+          <div class="specimen-bar">
+            <div class="specimen-tabs">
+              <button class="spec-tab active" onclick="switchTab(this, 0)">Challenge.lean (TCB)</button>
+              <button class="spec-tab" onclick="switchTab(this, 1)">Counting Invariant</button>
+              <button class="spec-tab" onclick="switchTab(this, 2)">Verification CLI</button>
+            </div>
+            <button class="copy-btn" onclick="copyActivePane(this)">Copy</button>
+          </div>
+          <pre class="spec-code active">theorem bft_agreement_safety
+    (recs : List ValidatorVote) (v1 v2 : Nat)
+    (h_byz : 3 * countByz recs &lt; recs.length)
+    (h_q1  : 2 * recs.length &lt; 3 * countQ1 recs)
+    (h_q2  : 2 * recs.length &lt; 3 * countQ2 recs)
+    (h_hon : honestVotesConsistent v1 v2 recs) :
+    v1 = v2 := by
+  sorry</pre>
+          <pre class="spec-code">-- Inductive pigeonhole bound proved across arbitrary validator lists:
+--   countQ1 recs + countQ2 recs ≤ recs.length + countByz recs + countHonestBoth recs
+-- Combining 3 * countByz &lt; n with 2 * n &lt; 3 * countQ1 and 2 * n &lt; 3 * countQ2
+-- forces 0 &lt; countHonestBoth recs via `omega`, extracting the honest witness.</pre>
+          <pre class="spec-code">python -m pcvh verify blueprints/02_bft_consensus</pre>
+        </div>
+      </article>
+
+      <!-- ==================== § 03 ==================== -->
+      <article id="bp03" class="blueprint">
+        <div class="bp-overline">
+          <div class="bp-sec-label">§ 03 <span>Compilers &amp; Symbolic Rewrite Systems</span></div>
+          <div class="bp-status">AUTONOMOUSLY PROVED · 6 THEOREMS · 500 TRACES</div>
+        </div>
+        <h3>SSA Arithmetic Peephole Optimizer</h3>
+        <div class="spec-ledger">
+          <span>Path: <b>pcvh/blueprints/03_ssa_peephole_opt</b></span>
+          <span>Synthesis: <b>100% Autonomous (pcvh prove)</b></span>
+          <span>Axioms: <b>propext, Quot.sound</b></span>
+        </div>
+
+        <div class="real-world-use">
+          <strong>Real-world use —</strong>
+          Eliminates silent miscompilations in compiler IR passes, SQL query-plan optimizers, and ZK/DSL lowering pipelines when engineers or AI agents add new rewrite rules. Drop into CI with <code>pcvh diff-reprove</code> to refute unsound algebraic rewrites in ~2 seconds and automatically synthesize proofs for valid ones.
+        </div>
+
+        <div class="editorial-columns">
+          <div class="ed-col">
+            <h4>Failure Mode Addressed</h4>
+            <p>
+              Catches silent miscompilations in algebraic simplification, SQL plan rewriting, or circuit lowering passes
+              (e.g., unsound subtraction rewrites or AST-expanding rules) that pass shallow unit suites yet corrupt nested expressions.
+            </p>
+          </div>
+          <div class="ed-col">
+            <h4>Production Integration</h4>
+            <p>
+              Demonstrates topological call-graph planning and incremental maintenance: every theorem in <code>Solution/Lem_*.lean</code>
+              was synthesized without human tactics by <code>pcvh prove</code>, and <code>pcvh diff-reprove</code> re-checks single-rule edits with a 75% lemma cache hit rate.
+            </p>
+          </div>
+        </div>
+
+        <table class="thm-table">
+          <thead><tr><th>Theorem</th><th>Formal Guarantee</th></tr></thead>
+          <tbody>
+            <tr><td>simpAdd_sound / simpSub_sound / simpMul_sound</td><td>Local peephole reductions (<code>x+0→x</code>, <code>x-x→0</code>, <code>x*0→0</code>, <code>x*1→x</code>, constant folding) preserve <code>eval</code>.</td></tr>
+            <tr><td>optPass_sound</td><td>Bottom-up recursive traversal preserves exact semantics <code>eval env (optPass e) = eval env e</code>.</td></tr>
+            <tr><td>optPass_nonexpanding</td><td>Optimization never increases AST size: <code>exprSize (optPass e) ≤ exprSize e</code>.</td></tr>
+            <tr><td>iropt_spec_nonvacuous</td><td>Witness reducing <code>(x * 1 + 0) - (x + (2 - 2))</code> to <code>Expr.const 0</code>.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="specimen" data-tabs>
+          <div class="specimen-bar">
+            <div class="specimen-tabs">
+              <button class="spec-tab active" onclick="switchTab(this, 0)">Challenge.lean (TCB)</button>
+              <button class="spec-tab" onclick="switchTab(this, 1)">Synthesized Lem_optPass_sound.lean</button>
+              <button class="spec-tab" onclick="switchTab(this, 2)">Autonomous CLI</button>
+            </div>
+            <button class="copy-btn" onclick="copyActivePane(this)">Copy</button>
+          </div>
+          <pre class="spec-code active">theorem optPass_sound (env : Nat → Int) (e : Expr) :
+    eval env (optPass e) = eval env e := by
+  sorry
+
+theorem optPass_nonexpanding (e : Expr) :
+    exprSize (optPass e) ≤ exprSize e := by
+  sorry</pre>
+          <pre class="spec-code">-- Auto-synthesized by `pcvh prove` after proving leaf helpers simpAdd/Sub/Mul_sound:
+theorem optPass_sound (env : Nat → Int) (e : Expr) : eval env (optPass e) = eval env e := by
+  induction e generalizing env
+  all_goals (try simp [optPass, eval, PCVHProofs.simpAdd_sound, PCVHProofs.simpSub_sound, PCVHProofs.simpMul_sound, *])
+  all_goals (try omega)
+  all_goals (try grind)</pre>
+          <pre class="spec-code">python -m pcvh prove blueprints/03_ssa_peephole_opt --workers 2
+python -m pcvh diff-reprove blueprints/03_ssa_peephole_opt</pre>
+        </div>
+      </article>
+
+      <!-- ==================== § 04 ==================== -->
+      <article id="bp04" class="blueprint">
+        <div class="bp-overline">
+          <div class="bp-sec-label">§ 04 <span>Financial Ledgers &amp; Event Sourcing</span></div>
+          <div class="bp-status">VERIFIED · 6 THEOREMS · 1,000 TRACES</div>
+        </div>
+        <h3>Idempotent Double-Entry Custody &amp; Payment Ledger</h3>
+        <div class="spec-ledger">
+          <span>Path: <b>pcvh/blueprints/04_double_entry_ledger</b></span>
+          <span>Target: <b>Python · Rust · TypeScript</b></span>
+          <span>Axioms: <b>Classical.choice, propext, Quot.sound</b></span>
+        </div>
+
+        <div class="real-world-use">
+          <strong>Real-world use —</strong>
+          Prevents self-transfer money creation, duplicate webhook double-charges on network retries, and negative-balance overdrafts in fintech payment processors, exchange custody ledgers, and billing engines. Scaffold directly into Rust or TypeScript services via <code>pcvh init my_ledger --lang rust --template ledger</code>.
+        </div>
+
+        <div class="editorial-columns">
+          <div class="ed-col">
+            <h4>Failure Mode Addressed</h4>
+            <p>
+              Prevents self-transfer balance inflation (aliased sender/recipient/fee accounts reading stale snapshots),
+              duplicate webhook double-execution on network retries, and overdraft transitions into negative balances.
+            </p>
+          </div>
+          <div class="ed-col">
+            <h4>Production Integration</h4>
+            <p>
+              Verifies three-leg atomic settlement (principal debit, recipient credit, protocol fee credit) and monotonic
+              idempotency-key retention across arbitrary event lists, available as a ready-to-scaffold Rust or TypeScript template.
+            </p>
+          </div>
+        </div>
+
+        <table class="thm-table">
+          <thead><tr><th>Theorem</th><th>Formal Guarantee</th></tr></thead>
+          <tbody>
+            <tr><td>step_conserves_total_balance</td><td>Single-event settlement conserves exact sum of balances across all accounts, including aliased legs.</td></tr>
+            <tr><td>trace_conserves_total_balance</td><td>Inductive supply conservation across arbitrary-length event streams <code>List TransferEvent</code>.</td></tr>
+            <tr><td>step_idempotent_on_seen_key</td><td>Replaying any event with <code>ev.idKey ∈ s0.seenKeys</code> returns <code>StepResult.ok s0</code> unchanged.</td></tr>
+            <tr><td>trace_preserves_nonneg_balances</td><td>Non-negative initial balances remain non-negative across every reachable trace.</td></tr>
+            <tr><td>trace_seenKeys_monotone</td><td>Committed idempotency keys are never evicted by subsequent transitions.</td></tr>
+            <tr><td>ledger_spec_nonvacuous</td><td>Three-step trace (transfer, duplicate retry, return transfer) conserving <code>1,000</code> units.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="specimen" data-tabs>
+          <div class="specimen-bar">
+            <div class="specimen-tabs">
+              <button class="spec-tab active" onclick="switchTab(this, 0)">Challenge.lean (TCB)</button>
+              <button class="spec-tab" onclick="switchTab(this, 1)">Multi-Language Scaffolding</button>
+            </div>
+            <button class="copy-btn" onclick="copyActivePane(this)">Copy</button>
+          </div>
+          <pre class="spec-code active">theorem trace_conserves_total_balance (s0 : LedgerState) (evs : List TransferEvent) :
+    totalBalance (execTrace s0 evs).balances = totalBalance s0.balances := by
+  sorry
+
+theorem step_idempotent_on_seen_key (s0 : LedgerState) (ev : TransferEvent) (h_seen : ev.idKey ∈ s0.seenKeys) :
+    step s0 ev = StepResult.ok s0 := by
+  sorry</pre>
+          <pre class="spec-code">python -m pcvh verify blueprints/04_double_entry_ledger
+python -m pcvh init ./ts_ledger --lang typescript --template ledger
+python -m pcvh init ./rs_ledger --lang rust --template ledger</pre>
+        </div>
+      </article>
+
+      <!-- ==================== § 05 ==================== -->
+      <article id="bp05" class="blueprint">
+        <div class="bp-overline">
+          <div class="bp-sec-label">§ 05 <span>Convex Optimization &amp; Metric Geometry</span></div>
+          <div class="bp-status">VERIFIED · 4 THEOREMS · EXACT RATIONAL DUAL</div>
+        </div>
+        <h3>Primal-Dual CAT(0) SOCP to Lean 4 Proof Certificate</h3>
+        <div class="spec-ledger">
+          <span>Path: <b>pcvh/blueprints/05_cat0_certificate</b></span>
+          <span>Generator: <b>quantum-cat0-checker (CVXPY → Lean 4)</b></span>
+          <span>Axioms: <b>propext, Quot.sound</b></span>
+        </div>
+
+        <div class="real-world-use">
+          <strong>Real-world use —</strong>
+          Converts untrusted floating-point optimization outputs from CVXPY / CLARABEL into exact, kernel-checked Lean&nbsp;4 proof certificates (<code>qcat0 certify</code>)—certifying quantum repeater entanglement capacities, network routing impossibility bounds, and convex safety envelopes without trusting numerical solver code.
+        </div>
+
+        <div class="editorial-columns">
+          <div class="ed-col">
+            <h4>Failure Mode Addressed</h4>
+            <p>
+              Interior-point conic solvers produce numerical optima in IEEE-754 floating-point (<code>1.000000004</code>),
+              which cannot serve directly as sound mathematical proofs of impossibility or capacity upper bounds.
+            </p>
+          </div>
+          <div class="ed-col">
+            <h4>Production Integration</h4>
+            <p>
+              Extracts rational Farkas dual multipliers from CVXPY's Berg–Nikolaev CAT(0) cone program (Theorem&nbsp;C.1),
+              verifies exact edge/diagonal cancellation in Python <code>Fraction</code> arithmetic, and emits a zero-<code>sorry</code>
+              Lean&nbsp;4 proof checked by the kernel.
+            </p>
+          </div>
+        </div>
+
+        <table class="thm-table">
+          <thead><tr><th>Theorem</th><th>Formal Guarantee</th></tr></thead>
+          <tbody>
+            <tr><td>c4_crossing_cat0_bound</td><td>Proves <span class="math">(<i>d</i><sub>02</sub> + <i>d</i><sub>13</sub>)<sup>2</sup> ≤ 2 ∑<sub><i>e</i> ∈ <i>C</i><sub>4</sub></sub> <i>u</i><sub><i>e</i></sub></span>, establishing the <span class="math">√2</span> crossing-pair capacity bound on <span class="math"><i>C</i><sub>4</sub></span>.</td></tr>
+            <tr><td>q3_cube_enflo_squared_bound</td><td>Sums four face-diagonal Enflo 4-cycles with dual weights <code>[1,1,1,1]</code> to cancel all face diagonals on <span class="math"><i>Q</i><sub>3</sub></span>.</td></tr>
+            <tr><td>q3_cube_crossing_linear_bound</td><td>Proves <span class="math">(<i>b</i><sub>0</sub> + <i>b</i><sub>1</sub> + <i>b</i><sub>2</sub> + <i>b</i><sub>3</sub>)<sup>2</sup> ≤ 4 ∑<sub><i>e</i> ∈ <i>Q</i><sub>3</sub></sub> <i>u</i><sub><i>e</i></sub></span>, certifying the <span class="math">√3</span> 3D cube compression bound.</td></tr>
+            <tr><td>cat0_spec_nonvacuous</td><td>Instantiates the unit square and unit 3D cube metrics, achieving exact equality on all bounds.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="specimen" data-tabs>
+          <div class="specimen-bar">
+            <div class="specimen-tabs">
+              <button class="spec-tab active" onclick="switchTab(this, 0)">Solution.lean (Dual Cancellation)</button>
+              <button class="spec-tab" onclick="switchTab(this, 1)">Certificate Synthesis CLI</button>
+            </div>
+            <button class="copy-btn" onclick="copyActivePane(this)">Copy</button>
+          </div>
+          <pre class="spec-code active">theorem q3_cube_enflo_squared_bound
+    (u : SqMetric 8) (h_symm : ∀ a b, u a b = u b a) (h_cat0 : Q3Cat0 u) :
+    q3BodyDiagSum u ≤ q3EdgeSum u := by
+  rcases h_cat0 with ⟨hBot, hTop, hDiag1, hDiag2⟩
+  unfold EnfloCycle at hBot hTop hDiag1 hDiag2
+  unfold q3BodyDiagSum q3EdgeSum
+  have hs1 : u 7 4 = u 4 7 := h_symm 7 4
+  have hs2 : u 6 5 = u 5 6 := h_symm 6 5
+  have hs3 : u 1 2 = u 2 1 := h_symm 1 2
+  omega</pre>
+          <pre class="spec-code">python -m pcvh cert-cat0 blueprints/05_cat0_certificate
+cd ../quantum-cat0-checker &amp;&amp; python -m quantum_cat0 certify K23_bipartite --lean-out K23Cert.lean</pre>
+        </div>
+      </article>
+
+      <!-- ==================== § 06 ==================== -->
+      <article id="bp06" class="blueprint">
+        <div class="bp-overline">
+          <div class="bp-sec-label">§ 06 <span>Autonomous Agent Security &amp; Policy Gateways</span></div>
+          <div class="bp-status">VERIFIED · 7 THEOREMS · 1,000 TS TRACES</div>
+        </div>
+        <h3>Capability-Scoped AI Agent Tool Gate &amp; Budget Guard</h3>
+        <div class="spec-ledger">
+          <span>Path: <b>pcvh/blueprints/06_agent_tool_guard</b></span>
+          <span>Target: <b>TypeScript (src/agent_guard.ts on Node.js)</b></span>
+          <span>Axioms: <b>propext, Quot.sound</b></span>
+        </div>
+
+        <div class="real-world-use">
+          <strong>Real-world use —</strong>
+          Hardens production MCP servers, coding-agent sandboxes, and enterprise AI tool proxies (<code>src/agent_guard.ts</code>) against prompt-injected <code>../</code> path escapes, unapproved destructive commands, runaway API dollar/rate spend loops, and emergency kill-switch bypasses across arbitrary multi-step tool chains.
+        </div>
+
+        <div class="editorial-columns">
+          <div class="ed-col">
+            <h4>Failure Mode Addressed</h4>
+            <p>
+              Prevents prompt-injected directory traversal (<code>..</code>), workspace scope escape, unapproved destructive
+              tool execution, runaway spend or rate loops, negative-cost budget resets, and post-halt execution leaks.
+            </p>
+          </div>
+          <div class="ed-col">
+            <h4>Production Integration</h4>
+            <p>
+              Pairs a deterministic TypeScript MCP / tool-proxy policy evaluator (<code>src/agent_guard.ts</code>) with Lean&nbsp;4
+              inductive trace invariants and 1,000 randomized 12-step tool-invocation traces executed directly on Node.js.
+            </p>
+          </div>
+        </div>
+
+        <table class="thm-table">
+          <thead><tr><th>Theorem</th><th>Formal Guarantee</th></tr></thead>
+          <tbody>
+            <tr><td>guard_trace_preserves_budget_cap</td><td>Cumulative spend across any tool-call sequence never exceeds <code>pol.maxBudgetCents</code>.</td></tr>
+            <tr><td>guard_trace_preserves_rate_limit</td><td>Cumulative allowed invocations never exceed <code>pol.maxCalls</code>.</td></tr>
+            <tr><td>guard_blocks_scope_or_traversal</td><td>Calls with <code>isPathTraversal = true</code> or <code>scopeId ≠ allowedScopeId</code> never return <code>allowed</code>.</td></tr>
+            <tr><td>guard_destructive_requires_human_approval</td><td>Destructive calls lacking explicit human approval are unconditionally denied.</td></tr>
+            <tr><td>guard_killswitch_permanent</td><td>Once <code>halted = true</code>, the state remains identical across all subsequent tool calls.</td></tr>
+            <tr><td>guard_spent_monotone</td><td>Cumulative <code>spentCents</code> is monotonically non-decreasing across arbitrary traces.</td></tr>
+            <tr><td>agent_guard_spec_nonvacuous</td><td>Six-call trace exercising allowed spend, traversal denial, approval gate, and kill-switch freeze.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="specimen" data-tabs>
+          <div class="specimen-bar">
+            <div class="specimen-tabs">
+              <button class="spec-tab active" onclick="switchTab(this, 0)">Challenge.lean (TCB)</button>
+              <button class="spec-tab" onclick="switchTab(this, 1)">src/agent_guard.ts</button>
+              <button class="spec-tab" onclick="switchTab(this, 2)">Verification CLI</button>
+            </div>
+            <button class="copy-btn" onclick="copyActivePane(this)">Copy</button>
+          </div>
+          <pre class="spec-code active">theorem guard_trace_preserves_budget_cap
+    (pol : Policy) (st : GuardState) (calls : List ToolCall)
+    (h_init : st.spentCents ≤ pol.maxBudgetCents) :
+    (execTrace pol st calls).spentCents ≤ pol.maxBudgetCents := by
+  sorry
+
+theorem guard_destructive_requires_human_approval
+    (pol : Policy) (st : GuardState) (call : ToolCall)
+    (h_dest : call.isDestructive = true) (h_no_app : call.hasHumanApproval = false) :
+    (evalToolCall pol st call).1 ≠ Decision.allowed := by
+  sorry</pre>
+          <pre class="spec-code">export function evalToolCall(pol: Policy, st: GuardState, call: ToolCall): [DecisionCode, GuardState] {
+  if (st.halted) return [DecisionCode.DeniedHalted, st];
+  if (call.tripKillSwitch) return [DecisionCode.DeniedHalted, { ...st, halted: true }];
+  if (call.isPathTraversal || call.scopeId !== pol.allowedScopeId) return [DecisionCode.DeniedScope, st];
+  if (call.isDestructive &amp;&amp; !call.hasHumanApproval) return [DecisionCode.DeniedApproval, st];
+  if (pol.maxCalls &lt;= st.callCount) return [DecisionCode.DeniedRateLimit, st];
+  if (pol.maxBudgetCents &lt; st.spentCents + call.costCents) return [DecisionCode.DeniedBudget, st];
+  return [DecisionCode.Allowed, { spentCents: st.spentCents + call.costCents, callCount: st.callCount + 1, halted: false }];
+}</pre>
+          <pre class="spec-code">python -m pcvh verify blueprints/06_agent_tool_guard</pre>
+        </div>
+      </article>
+
+      <!-- ==================== § 07 ==================== -->
+      <article id="bp07" class="blueprint">
+        <div class="bp-overline">
+          <div class="bp-sec-label">§ 07 <span>Exchange Matching &amp; Risk Engines</span></div>
+          <div class="bp-status">VERIFIED · 6 THEOREMS · 1,000 RUST TRACES</div>
+        </div>
+        <h3>Price-Time Priority Limit Order Book &amp; Cross-Margin Engine</h3>
+        <div class="spec-ledger">
+          <span>Path: <b>pcvh/blueprints/07_orderbook_matching</b></span>
+          <span>Target: <b>Rust Crate (Cargo.toml + src/lib.rs)</b></span>
+          <span>Axioms: <b>Classical.choice, propext, Quot.sound</b></span>
+        </div>
+
+        <div class="real-world-use">
+          <strong>Real-world use —</strong>
+          Protects high-throughput Rust spot and perpetual-futures matching engines (<code>src/lib.rs</code>) against crossed-limit fills, partial-fill quantity leaks, fee-settlement imbalances, and floating-point liquidation drift—running <code>cargo test</code> plus 1,000 randomized fills and margin checks against Lean&nbsp;4 on every commit.
+        </div>
+
+        <div class="editorial-columns">
+          <div class="ed-col">
+            <h4>Failure Mode Addressed</h4>
+            <p>
+              Eliminates limit-price violations on aggressive fills, base-quantity over-fills or lost partial-fill remainders,
+              quote-currency and fee-vault settlement leaks, and IEEE-754 precision drift near maintenance-margin liquidation thresholds.
+            </p>
+          </div>
+          <div class="ed-col">
+            <h4>Production Integration</h4>
+            <p>
+              Compiles and tests a native Rust matching crate (<code>cargo test</code> + <code>u64</code>/<code>u128</code> fixed-point
+              trace binary), checking 1,000 randomized partial fills, fee settlements, and cross-multiplied margin checks bit-for-bit against Lean&nbsp;4.
+            </p>
+          </div>
+        </div>
+
+        <table class="thm-table">
+          <thead><tr><th>Theorem</th><th>Formal Guarantee</th></tr></thead>
+          <tbody>
+            <tr><td>match_respects_limit_prices</td><td>Every positive fill satisfies maker and taker limit bounds (<code>ask.price ≤ execPrice ≤ bid.price</code>).</td></tr>
+            <tr><td>match_conserves_order_quantities</td><td>Exact base conservation: <code>fillQty + remBidQty = bid.qty</code> and <code>fillQty + remAskQty = ask.qty</code>.</td></tr>
+            <tr><td>settlement_conserves_total_quote</td><td>Quote notional and protocol fee settlement conserves <code>buyerQuote + sellerQuote + feeVault</code>.</td></tr>
+            <tr><td>margin_liquidation_exact_iff</td><td>Integer liquidation triggers iff <span class="math">10,000 · collateral &lt; maintBps · notional</span>.</td></tr>
+            <tr><td>orderbook_seq_strictly_increasing</td><td>Matching strictly advances the deterministic exchange sequence number.</td></tr>
+            <tr><td>orderbook_spec_nonvacuous</td><td>Concrete partial fill (<code>105@10</code> vs <code>100@6 → 6@100</code>), fee routing, and margin boundary witness.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="specimen" data-tabs>
+          <div class="specimen-bar">
+            <div class="specimen-tabs">
+              <button class="spec-tab active" onclick="switchTab(this, 0)">Challenge.lean (TCB)</button>
+              <button class="spec-tab" onclick="switchTab(this, 1)">src/lib.rs (Rust)</button>
+              <button class="spec-tab" onclick="switchTab(this, 2)">Verification CLI</button>
+            </div>
+            <button class="copy-btn" onclick="copyActivePane(this)">Copy</button>
+          </div>
+          <pre class="spec-code active">theorem match_conserves_order_quantities (bid ask : Order) (curSeq : Nat) :
+    let m := matchBidAsk bid ask curSeq
+    m.fillQty + m.remBidQty = bid.qty ∧ m.fillQty + m.remAskQty = ask.qty := by
+  sorry
+
+theorem settlement_conserves_total_quote (b : QuoteBalances) (notional fee : Nat) :
+    totalQuote (settleQuote b notional fee).2 = totalQuote b := by
+  sorry</pre>
+          <pre class="spec-code">pub fn match_bid_ask(bid: Order, ask: Order, cur_seq: u64) -&gt; MatchOutcome {
+    if ask.price &lt;= bid.price &amp;&amp; bid.qty &gt; 0 &amp;&amp; ask.qty &gt; 0 {
+        let fill = bid.qty.min(ask.qty);
+        MatchOutcome {
+            fill_qty: fill,
+            exec_price: ask.price,
+            rem_bid_qty: bid.qty - fill,
+            rem_ask_qty: ask.qty - fill,
+            next_seq: cur_seq + 1,
+        }
+    } else {
+        MatchOutcome { fill_qty: 0, exec_price: ask.price, rem_bid_qty: bid.qty, rem_ask_qty: ask.qty, next_seq: cur_seq + 1 }
+    }
+}</pre>
+          <pre class="spec-code">python -m pcvh verify blueprints/07_orderbook_matching</pre>
+        </div>
+      </article>
+
+      <!-- ==================== § 08 ==================== -->
+      <article id="bp08" class="blueprint">
+        <div class="bp-overline">
+          <div class="bp-sec-label">§ 08 <span>Zero-Knowledge Circuits &amp; Network Protocols</span></div>
+          <div class="bp-status">VERIFIED · 8 THEOREMS · 1,000 BITMASK TRACES</div>
+        </div>
+        <h3>R1CS Zero-Knowledge Gadgets &amp; 64-Packet Anti-Replay Window</h3>
+        <div class="spec-ledger">
+          <span>Path: <b>pcvh/blueprints/08_zk_and_replay_window</b></span>
+          <span>Target: <b>O(1) 64-Bit Sliding Bitmap (prod_zk_replay.py)</b></span>
+          <span>Axioms: <b>Classical.choice, propext, Quot.sound</b></span>
+        </div>
+
+        <div class="real-world-use">
+          <strong>Real-world use —</strong>
+          Eliminates under-constrained R1CS/Plonkish range and selector circuit bugs (the #1 root cause of ZK rollup and zk-bridge soundness exploits) alongside bitshift boundary bugs in <code>O(1)</code> 64-bit WireGuard / IPsec anti-replay packet windows.
+        </div>
+
+        <div class="editorial-columns">
+          <div class="ed-col">
+            <h4>Failure Mode Addressed</h4>
+            <p>
+              Addresses under-constrained R1CS/Plonkish range and selector witnesses—where malicious provers supply non-binary
+              wires that reconstruct out-of-range limbs—and bitshift boundary bugs in RFC-6479 / WireGuard 64-packet replay windows.
+            </p>
+          </div>
+          <div class="ed-col">
+            <h4>Production Integration</h4>
+            <p>
+              Proves bidirectional circuit correctness (both constraint soundness and witness-generator completeness) alongside
+              anti-replay state invariants, differentially checking Lean's pure offset list against an <span class="math"><i>O</i>(1)</span> 64-bit integer bitmask across 16,000 packet arrivals.
+            </p>
+          </div>
+        </div>
+
+        <table class="thm-table">
+          <thead><tr><th>Theorem</th><th>Formal Guarantee</th></tr></thead>
+          <tbody>
+            <tr><td>zk_bool_wire_sound</td><td>Quadratic constraint <span class="math"><i>b</i>(<i>b</i> − 1) = 0</span> over <span class="math">ℤ</span> forces <span class="math"><i>b</i> = 0 ∨ <i>b</i> = 1</span>.</td></tr>
+            <tr><td>zk_range4_sound</td><td>Four boolean-constrained wires packed via <span class="math"><i>b</i><sub>0</sub> + 2<i>b</i><sub>1</sub> + 4<i>b</i><sub>2</sub> + 8<i>b</i><sub>3</sub></span> lie strictly in <span class="math">[0, 15]</span>.</td></tr>
+            <tr><td>zk_range4_complete</td><td>Every <span class="math"><i>v</i> &lt; 16</span> decomposes via <code>unpackBits4</code> into valid boolean wires reconstructing <span class="math"><i>v</i></span>.</td></tr>
+            <tr><td>zk_mux_sound</td><td>Selector <span class="math"><i>s</i> · <i>a</i> + (1 − <i>s</i>) · <i>b</i></span> evaluates to <span class="math"><i>b</i></span> at <span class="math"><i>s</i> = 0</span> and <span class="math"><i>a</i></span> at <span class="math"><i>s</i> = 1</span>.</td></tr>
+            <tr><td>replay_immediate_duplicate_rejected</td><td>Any accepted sequence number <code>seq</code> is deterministically rejected on immediate replay.</td></tr>
+            <tr><td>replay_stale_outside_window_rejected</td><td>Packets trailing <code>highest</code> by <span class="math">≥ 64</span> are rejected with zero state mutation.</td></tr>
+            <tr><td>replay_highest_monotone</td><td>Window watermark <code>highest</code> never decreases on any initialized or fresh window.</td></tr>
+            <tr><td>zk_replay_spec_nonvacuous</td><td>Witness decomposing <code>13 → (1,0,1,1)</code> and testing out-of-order, duplicate, and stale packets.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="specimen" data-tabs>
+          <div class="specimen-bar">
+            <div class="specimen-tabs">
+              <button class="spec-tab active" onclick="switchTab(this, 0)">Challenge.lean (TCB)</button>
+              <button class="spec-tab" onclick="switchTab(this, 1)">prod_zk_replay.py (64-Bit Mask)</button>
+              <button class="spec-tab" onclick="switchTab(this, 2)">Verification CLI</button>
+            </div>
+            <button class="copy-btn" onclick="copyActivePane(this)">Copy</button>
+          </div>
+          <pre class="spec-code active">theorem zk_range4_sound (b0 b1 b2 b3 : Int)
+    (h0 : isBoolWire b0) (h1 : isBoolWire b1) (h2 : isBoolWire b2) (h3 : isBoolWire b3) :
+    0 ≤ packBits4 b0 b1 b2 b3 ∧ packBits4 b0 b1 b2 b3 &lt; 16 := by
+  sorry
+
+theorem replay_immediate_duplicate_rejected (w0 w1 : ReplayWindow) (seq : Nat)
+    (h_acc : acceptPacket w0 seq = (true, w1)) :
+    (acceptPacket w1 seq).1 = false := by
+  sorry</pre>
+          <pre class="spec-code">class WireGuardReplayWindow:
+    def accept_packet(self, seq: int) -&gt; bool:
+        if not self.initialized:
+            self.initialized, self.highest, self.bitmap = True, seq, 1
+            return True
+        if seq &gt; self.highest:
+            delta = seq - self.highest
+            self.bitmap = 1 if delta &gt;= 64 else (((self.bitmap &lt;&lt; delta) &amp; MASK_64) | 1)
+            self.highest = seq
+            return True
+        offset = self.highest - seq
+        if offset &gt;= 64 or ((self.bitmap &gt;&gt; offset) &amp; 1) == 1:
+            return False
+        self.bitmap |= (1 &lt;&lt; offset)
+        return True</pre>
+          <pre class="spec-code">python -m pcvh verify blueprints/08_zk_and_replay_window</pre>
+        </div>
+      </article>
+
+      <footer class="colophon-end">
+        <span>VP–VNP Lab · Proof-Carrying Verification Harness</span>
+        <span>Licensed under Apache-2.0 · 48/48 Theorems Verified in Lean 4.33.1</span>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // Context-aware navigation: works both on GitHub Pages (/vp-vnp-lab/) and inside local `pcvh studio` (127.0.0.1)
+    (function configureNavLinks() {
+      const isLocalStudio = location.hostname === "127.0.0.1" || location.hostname === "localhost";
+      const primary = document.getElementById("nav-studio-or-repo");
+      const evalLink = document.getElementById("nav-eval-link");
+      const repoExtra = document.getElementById("nav-repo-extra");
+      if (isLocalStudio) {
+        primary.textContent = "← Open Live PCVH Studio";
+        primary.href = "/";
+        evalLink.href = "/eval";
+        repoExtra.style.display = "inline";
+      } else if (location.protocol === "file:") {
+        evalLink.href = "./eval_dashboard.html";
+      } else {
+        const inShowcaseSubdir = /\/showcase\/?$/.test(location.pathname);
+        evalLink.href = inShowcaseSubdir ? "../eval/" : "./eval/";
+      }
+    })();
+
+    // Reading mode toggle (Archival Paper <-> Evening Dusk), synced via localStorage
+    const modeBtn = document.getElementById("mode-toggle");
+    function setMode(m) {
+      const mode = m === "dusk" ? "dusk" : "paper";
+      document.documentElement.setAttribute("data-mode", mode);
+      modeBtn.textContent = mode === "paper" ? "Reading mode: Paper" : "Reading mode: Dusk";
+      try { localStorage.setItem("pcvh_mode", mode); } catch (_) {}
+    }
+    try {
+      const saved = localStorage.getItem("pcvh_mode");
+      if (saved) setMode(saved);
+    } catch (_) {}
+    modeBtn.addEventListener("click", () => {
+      const root = document.documentElement;
+      const next = root.getAttribute("data-mode") === "paper" ? "dusk" : "paper";
+      setMode(next);
+    });
+
+    // Specimen tab switching & copy
+    function switchTab(btn, idx) {
+      const box = btn.closest("[data-tabs]");
+      box.querySelectorAll(".spec-tab").forEach((b, i) => b.classList.toggle("active", i === idx));
+      box.querySelectorAll(".spec-code").forEach((p, i) => p.classList.toggle("active", i === idx));
+    }
+
+    function copyActivePane(copyBtn) {
+      const box = copyBtn.closest("[data-tabs]");
+      const active = box.querySelector(".spec-code.active");
+      if (!active) return;
+      navigator.clipboard.writeText(active.textContent).then(() => {
+        const prev = copyBtn.textContent;
+        copyBtn.textContent = "Copied";
+        setTimeout(() => { copyBtn.textContent = prev; }, 1100);
+      });
+    }
+
+    // Single-pass editorial syntax highlighting across Lean 4, Rust, TypeScript, and Python snippets
+    const TOKEN_RE = /\b(theorem|lemma|def|private|structure|inductive|where|by|sorry|have|let|in|if|then|else|match|with|induction|generalizing|rcases|unfold|simp|simp_all|omega|grind|rw|exact|all_goals|try|open|namespace|end|export|function|return|pub|fn|class|self|python|cd)\b|\b(Nat|Int|Bool|List|Prop|Decision|DecisionCode|Policy|GuardState|ToolCall|Order|MatchOutcome|QuoteBalances|ReplayWindow|Expr|ValidatorVote|LedgerState|TransferEvent|StepResult|SqMetric|Q3Cat0|u64|u128|bool|int)\b|\b(\d[\d_]*)\b/g;
+
+    function highlightLine(escapedLine) {
+      let cmIdx = -1;
+      for (const marker of ["--", "//"]) {
+        const i = escapedLine.indexOf(marker);
+        if (i !== -1 && (cmIdx === -1 || i < cmIdx)) cmIdx = i;
+      }
+      if (cmIdx === -1 && escapedLine.trimStart().startsWith("#")) {
+        cmIdx = escapedLine.indexOf("#");
+      }
+      const codePart = cmIdx === -1 ? escapedLine : escapedLine.slice(0, cmIdx);
+      const cmPart = cmIdx === -1 ? "" : `<span class="syn-cm">${escapedLine.slice(cmIdx)}</span>`;
+
+      const tokenized = codePart.replace(TOKEN_RE, (m, kw, ty, num) => {
+        if (kw) return `<span class="syn-kw">${kw}</span>`;
+        if (ty) return `<span class="syn-ty">${ty}</span>`;
+        return `<span class="syn-num">${num}</span>`;
+      });
+      return tokenized + cmPart;
+    }
+
+    document.querySelectorAll("pre.spec-code").forEach((pre) => {
+      const raw = pre.innerHTML;
+      pre.innerHTML = raw.split("\n").map(highlightLine).join("\n");
+    });
+
+    // Left margin scroll-spy
+    const tocLinks = Array.from(document.querySelectorAll("aside.toc a[href^='#']"));
+    const sections = tocLinks.map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+    const onScroll = () => {
+      let current = sections[0];
+      const threshold = window.scrollY + 140;
+      for (const sec of sections) {
+        if (sec.offsetTop <= threshold) current = sec;
+      }
+      if (current) {
+        tocLinks.forEach((a) => a.classList.toggle("active", a.getAttribute("href") === `#${current.id}`));
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>

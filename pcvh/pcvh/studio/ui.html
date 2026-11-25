@@ -1,378 +1,892 @@
-<!doctype html>
-<html lang="en" data-theme="dark">
+<!DOCTYPE html>
+<html lang="en" data-mode="paper">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PCVH Studio — Proof-Carrying Verification Harness</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PCVH Studio — Verification Workbench (Lean 4.33.1)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23FAF8F4' stroke='%239A3820' stroke-width='2'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Georgia,serif' font-style='italic' font-size='18' fill='%23171614'%3E%C2%A7%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0b101b;
-      --panel: #121a2a;
-      --panel-2: #182338;
-      --border: #253450;
-      --text: #e6eefc;
-      --muted: #8ea1c2;
-      --accent: #4f9cff;
-      --accent-2: #8b5cf6;
-      --ok: #22c55e;
-      --warn: #f59e0b;
-      --err: #ef4444;
-      --code-bg: #080d17;
-      --mono: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
-      --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --paper: #FAF8F4;
+      --paper-recess: #F2EFE8;
+      --paper-hover: #EAE5DB;
+      --paper-sel: #E4DDD0;
+      --ink: #171614;
+      --ink-body: #2C2A26;
+      --ink-muted: #6E685F;
+      --ink-faint: #948D82;
+      --rule: #DCD6CA;
+      --rule-strong: #171614;
+      --accent: #9A3820;
+      --verified: #1E563B;
+      --warn: #8A5A10;
+      --err: #A12622;
+
+      --syn-kw: #9A3820;
+      --syn-ty: #1E563B;
+      --syn-cm: #7D766B;
+      --syn-num: #6B4C1E;
+
+      --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+      --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
     }
-    [data-theme="light"] {
-      --bg: #f3f6fb;
-      --panel: #ffffff;
-      --panel-2: #f8fafc;
-      --border: #d7e0ee;
-      --text: #0f172a;
-      --muted: #52637d;
-      --accent: #2563eb;
-      --accent-2: #7c3aed;
-      --ok: #15803d;
-      --warn: #b45309;
-      --err: #b91c1c;
-      --code-bg: #f1f5f9;
+
+    [data-mode="dusk"] {
+      --paper: #151413;
+      --paper-recess: #1D1C1A;
+      --paper-hover: #252320;
+      --paper-sel: #2E2B26;
+      --ink: #EDE9E0;
+      --ink-body: #CFCAC0;
+      --ink-muted: #968F84;
+      --ink-faint: #6D675E;
+      --rule: #2E2C28;
+      --rule-strong: #D8D2C7;
+      --accent: #D47459;
+      --verified: #6BA888;
+      --warn: #D9A44E;
+      --err: #E06C65;
+
+      --syn-kw: #D47459;
+      --syn-ty: #7AB395;
+      --syn-cm: #7F796F;
+      --syn-num: #C8A46B;
     }
+
     * { box-sizing: border-box; }
     body {
       margin: 0;
+      background: var(--paper);
+      color: var(--ink-body);
       font-family: var(--sans);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
+      font-size: 13.5px;
+      line-height: 1.5;
+      height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
     }
-    header {
+
+    @media (max-width: 980px) {
+      body { height: auto; overflow: auto; }
+    }
+
+    /* ---- Top Masthead Bar ---- */
+    header.topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: 12px 18px;
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
+      gap: 16px;
+      padding: 10px 20px;
+      border-bottom: 1.5px solid var(--rule-strong);
+      background: var(--paper);
+      flex-shrink: 0;
       flex-wrap: wrap;
     }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
-    .brand-dot {
-      width: 11px; height: 11px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      box-shadow: 0 0 12px var(--accent);
+
+    .brand-group {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      flex-wrap: wrap;
     }
-    .meta-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .pill {
-      font-size: 12px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      color: var(--muted);
+
+    .brand-title {
+      font-family: var(--serif);
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--ink);
+      letter-spacing: -0.015em;
+    }
+
+    .brand-sub {
       font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink-muted);
     }
-    .pill.ok { color: var(--ok); border-color: rgba(34,197,94,.4); }
-    .pill.warn { color: var(--warn); border-color: rgba(245,158,11,.4); }
-    .pill.err { color: var(--err); border-color: rgba(239,68,68,.4); }
-    .pill.accent { color: var(--accent); border-color: rgba(79,156,255,.4); }
 
-    button {
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+    }
+
+    .tel-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding-right: 12px;
+      border-right: 1px solid var(--rule);
+    }
+    .tel-item b { font-weight: 500; color: var(--ink); }
+    .tel-item.ok b { color: var(--verified); }
+    .tel-item.err b { color: var(--err); }
+
+    .nav-link {
+      color: var(--ink);
+      text-decoration: none;
+      border-bottom: 1px solid var(--rule-strong);
+      padding-bottom: 1px;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .nav-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ---- Controls & Buttons ---- */
+    button, .btn {
       cursor: pointer;
-      font-family: var(--sans);
-      font-size: 13px;
-      font-weight: 600;
-      padding: 7px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--panel-2);
-      color: var(--text);
-      transition: background .15s, border-color .15s, transform .05s;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 6px 11px;
+      border-radius: 2px;
+      border: 1px solid var(--rule-strong);
+      background: var(--paper);
+      color: var(--ink);
+      transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
     }
-    button:hover { border-color: var(--accent); }
-    button:active { transform: translateY(1px); }
-    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-    button.secondary { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
+    button:hover { background: var(--paper-hover); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-    .layout {
+    button.primary {
+      background: var(--ink);
+      color: var(--paper);
+      border-color: var(--ink);
+    }
+    button.primary:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    button.accent-outline {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    button.accent-outline:hover {
+      background: var(--accent);
+      color: var(--paper);
+    }
+
+    button.subtle {
+      border-color: var(--rule);
+      color: var(--ink-muted);
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+    button.subtle:hover {
+      border-color: var(--ink);
+      color: var(--ink);
+    }
+
+    input, select, textarea {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--paper-recess);
+      color: var(--ink);
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      padding: 6px 8px;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--ink);
+    }
+
+    /* ---- Notice Banner (replaces browser alert()) ---- */
+    #notice-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 20px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper-recess);
+      flex-shrink: 0;
+    }
+    #notice-bar.show { display: flex; }
+    #notice-bar.err { color: var(--err); border-left: 3px solid var(--err); }
+    #notice-bar.ok { color: var(--verified); border-left: 3px solid var(--verified); }
+    #notice-bar.info { color: var(--ink); border-left: 3px solid var(--accent); }
+
+    /* ---- Main Split Workbench ---- */
+    .workbench {
       display: grid;
-      grid-template-columns: 280px 1fr;
+      grid-template-columns: 268px minmax(0, 1fr);
       flex: 1;
       min-height: 0;
     }
-    @media (max-width: 960px) {
-      .layout { grid-template-columns: 1fr; }
+    @media (max-width: 980px) {
+      .workbench { grid-template-columns: 1fr; }
     }
-    aside {
-      background: var(--panel);
-      border-right: 1px solid var(--border);
-      padding: 14px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .sidebar-hdr {
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
-    }
-    .proj-card {
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: var(--panel-2);
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .proj-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
-    .proj-title { font-weight: 600; font-size: 13px; word-break: break-word; }
-    .proj-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .badge {
-      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px;
-      text-transform: uppercase; font-family: var(--mono);
-    }
-    .badge.VERIFIED { background: rgba(34,197,94,.16); color: var(--ok); }
-    .badge.REJECTED, .badge.CONFIG_ERROR { background: rgba(239,68,68,.16); color: var(--err); }
-    .badge.UNVERIFIED { background: rgba(245,158,11,.16); color: var(--warn); }
-    .badge.lang { background: rgba(79,156,255,.15); color: var(--accent); }
-    .badge.signed { background: rgba(139,92,246,.2); color: var(--accent-2); }
 
-    main {
-      padding: 16px 20px;
-      overflow-y: auto;
+    /* ---- Left Specification Explorer ---- */
+    aside.explorer {
+      border-right: 1px solid var(--rule);
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      min-height: 0;
+      background: var(--paper);
     }
-    .toolbar {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-      background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px;
-    }
-    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1.45fr 1fr;
-      gap: 14px;
-    }
-    @media (max-width: 1180px) {
-      .grid-2 { grid-template-columns: 1fr; }
-    }
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
+    .explorer-top {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--rule);
       display: flex;
       flex-direction: column;
+      gap: 8px;
     }
-    .card-hdr {
+
+    .explorer-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink-muted);
+    }
+
+    #project-list {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .spec-item {
       padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--rule);
+      border-left: 3px solid transparent;
+      cursor: pointer;
+      transition: background 0.1s ease;
+    }
+    .spec-item:hover { background: var(--paper-recess); }
+    .spec-item.active {
+      background: var(--paper-recess);
+      border-left-color: var(--accent);
+    }
+
+    .spec-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 3px;
+    }
+
+    .spec-item-name {
+      font-weight: 500;
+      font-size: 13px;
+      color: var(--ink);
+      word-break: break-word;
+    }
+
+    .status-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+    .status-tag.VERIFIED { color: var(--verified); }
+    .status-tag.REJECTED, .status-tag.CONFIG_ERROR { color: var(--err); }
+    .status-tag.UNVERIFIED { color: var(--warn); }
+
+    .spec-item-meta {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ---- Right Workspace Pane ---- */
+    main.stage {
+      overflow-y: auto;
+      padding: 18px 24px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      min-height: 0;
+    }
+
+    /* Project Header & Action Bar */
+    .project-bar {
+      border-bottom: 1px solid var(--rule-strong);
+      padding-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .project-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    #proj-heading {
+      font-family: var(--serif);
+      font-size: 26px;
+      font-weight: 500;
+      color: var(--ink);
+      margin: 0;
+      letter-spacing: -0.015em;
+    }
+
+    #proj-ledger {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--ink-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+    }
+    #proj-ledger b { color: var(--ink); font-weight: 500; }
+
+    .command-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .action-btns {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .prover-opts {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      background: var(--panel-2);
-    }
-    .card-body { padding: 12px 14px; }
-
-    .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-    .tab {
-      font-size: 12px; font-family: var(--mono); padding: 4px 9px; border-radius: 6px;
-      border: 1px solid transparent; background: transparent; color: var(--muted);
-    }
-    .tab.active { background: var(--panel); border-color: var(--accent); color: var(--text); }
-
-    .code-box {
-      background: var(--code-bg);
       font-family: var(--mono);
-      font-size: 12.5px;
-      line-height: 1.55;
-      max-height: 430px;
-      overflow: auto;
-      padding: 8px 0;
+      font-size: 11px;
+      color: var(--ink-muted);
+      flex-wrap: wrap;
     }
+    .prover-opts select {
+      padding: 4px 6px;
+      font-size: 11px;
+    }
+
+    /* ---- Split Code + Lean 4 LSP Infoview ---- */
+    .editor-lsp-grid {
+      display: grid;
+      grid-template-columns: 1.48fr 1fr;
+      border: 1px solid var(--rule);
+      background: var(--paper);
+      min-height: 430px;
+    }
+    @media (max-width: 1160px) {
+      .editor-lsp-grid { grid-template-columns: 1fr; }
+    }
+
+    .source-pane {
+      border-right: 1px solid var(--rule);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    @media (max-width: 1160px) {
+      .source-pane { border-right: none; border-bottom: 1px solid var(--rule); }
+    }
+
+    .pane-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--rule);
+      padding: 0 12px;
+      background: var(--paper-recess);
+      gap: 10px;
+      flex-wrap: wrap;
+      min-height: 36px;
+    }
+
+    .file-tabs {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      flex-wrap: wrap;
+    }
+
+    .file-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 8px 0 6px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--ink-muted);
+      cursor: pointer;
+      margin-bottom: -1px;
+      white-space: nowrap;
+    }
+    .file-tab:hover { color: var(--ink); }
+    .file-tab.active {
+      color: var(--ink);
+      font-weight: 500;
+      border-bottom-color: var(--accent);
+    }
+    .tcb-mark {
+      font-size: 9.5px;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 0 3px;
+      margin-left: 4px;
+      vertical-align: 1px;
+    }
+
+    .sub-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 12px;
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .thm-jumps {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .jump-chip {
+      background: var(--paper-recess);
+      border: 1px solid var(--rule);
+      padding: 1px 6px;
+      font-size: 10.5px;
+      color: var(--ink-body);
+    }
+    .jump-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+    .code-scroll {
+      font-family: var(--mono);
+      font-size: 12.2px;
+      line-height: 1.58;
+      height: 390px;
+      overflow: auto;
+      background: var(--paper);
+      padding: 6px 0;
+    }
+
     .code-line {
       display: grid;
-      grid-template-columns: 44px 1fr;
-      padding: 0 12px 0 0;
+      grid-template-columns: 46px 1fr;
+      padding-right: 14px;
       cursor: pointer;
     }
-    .code-line:hover { background: rgba(79,156,255,.1); }
-    .code-line.selected { background: rgba(79,156,255,.22); }
+    .code-line:hover { background: var(--paper-recess); }
+    .code-line.selected { background: var(--paper-sel); }
+    .code-line.diag-err { border-left: 3px solid var(--err); }
+    .code-line.diag-warn { border-left: 3px solid var(--warn); }
+
     .ln {
       text-align: right;
-      padding-right: 10px;
-      color: var(--muted);
+      padding-right: 12px;
+      color: var(--ink-faint);
       user-select: none;
-      opacity: .75;
+      font-variant-numeric: tabular-nums;
     }
-    .src { white-space: pre; }
+    .src { white-space: pre; color: var(--ink); }
 
-    pre.infoview {
+    #code-editor-wrap {
+      display: none;
+      flex-direction: column;
+      height: 390px;
+    }
+    #code-editor {
+      flex: 1;
+      width: 100%;
+      border: none;
+      resize: none;
+      padding: 10px 14px;
+      font-family: var(--mono);
+      font-size: 12.2px;
+      line-height: 1.58;
+      background: var(--paper-recess);
+      color: var(--ink);
+    }
+    .editor-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      border-top: 1px solid var(--rule);
+      background: var(--paper);
+      font-family: var(--mono);
+      font-size: 11px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .syn-kw { color: var(--syn-kw); font-weight: 500; }
+    .syn-ty { color: var(--syn-ty); }
+    .syn-cm { color: var(--syn-cm); font-style: italic; }
+    .syn-num { color: var(--syn-num); }
+
+    /* ---- Lean 4 LSP Infoview Pane ---- */
+    .lsp-pane {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--paper);
+    }
+
+    .lsp-body {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink-muted);
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    pre.infoview-box {
       margin: 0;
-      padding: 10px 12px;
-      background: var(--code-bg);
-      border-radius: 8px;
-      border: 1px solid var(--border);
+      padding: 11px 13px;
+      background: var(--paper-recess);
+      border: 1px solid var(--rule);
       font-family: var(--mono);
       font-size: 12px;
+      line-height: 1.55;
       white-space: pre-wrap;
-      max-height: 290px;
+      color: var(--ink);
       overflow: auto;
     }
-    .checks-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-    .checks-table th, .checks-table td {
-      text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border);
+
+    /* ---- Lower Tabbed Inspector (Attestation / TCB Lock / Job Logs) ---- */
+    .inspector {
+      border: 1px solid var(--rule);
+      background: var(--paper);
+    }
+
+    .inspector-body {
+      padding: 16px 18px;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      font-variant-numeric: tabular-nums;
+    }
+    table.data-table th {
+      text-align: left;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink-muted);
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--rule-strong);
+    }
+    table.data-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--rule);
+      font-family: var(--mono);
+      font-size: 12px;
       vertical-align: top;
     }
-    .checks-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
-    .mono { font-family: var(--mono); font-size: 12px; }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .chip {
-      font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 6px;
-      background: var(--panel-2); border: 1px solid var(--border);
+
+    .thm-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
     }
-    .job-log {
-      font-family: var(--mono); font-size: 12px; background: var(--code-bg);
-      border: 1px solid var(--border); border-radius: 8px; padding: 10px;
-      max-height: 170px; overflow: auto; white-space: pre-wrap;
+    .thm-item {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      padding: 2px 8px;
+      border: 1px solid var(--rule);
+      background: var(--paper-recess);
+      color: var(--ink);
     }
-    textarea, input, select {
-      background: var(--code-bg); color: var(--text); border: 1px solid var(--border);
-      border-radius: 8px; padding: 8px; font-family: var(--mono); font-size: 12px; width: 100%;
+
+    pre.job-console {
+      margin: 0;
+      padding: 12px 14px;
+      background: var(--paper-recess);
+      border: 1px solid var(--rule);
+      font-family: var(--mono);
+      font-size: 11.8px;
+      line-height: 1.55;
+      max-height: 240px;
+      overflow: auto;
+      white-space: pre-wrap;
+      color: var(--ink);
     }
+
+    /* ---- Modal ---- */
     .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,.6);
-      display: none; align-items: center; justify-content: center; z-index: 40;
+      position: fixed;
+      inset: 0;
+      background: rgba(23, 22, 20, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
     }
     .modal-backdrop.open { display: flex; }
     .modal {
-      width: 440px; max-width: 94vw; background: var(--panel); border: 1px solid var(--border);
-      border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px;
+      width: 460px;
+      max-width: 94vw;
+      background: var(--paper);
+      border: 1.5px solid var(--rule-strong);
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
-    label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+    .modal h3 {
+      margin: 0;
+      font-family: var(--serif);
+      font-weight: 500;
+      font-size: 22px;
+      color: var(--ink);
+    }
+    .field label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--ink-muted);
+      margin-bottom: 5px;
+    }
+    .field input, .field select { width: 100%; }
   </style>
 </head>
 <body>
-  <header>
-    <div class="brand">
-      <span class="brand-dot"></span>
-      <span>PCVH Studio</span>
-      <span class="pill accent">Zero-Trust Palomar Gate</span>
+  <header class="topbar">
+    <div class="brand-group">
+      <span class="brand-title">PCVH Studio</span>
+      <span class="brand-sub">Zero-Trust Palomar Verification Workbench</span>
     </div>
-    <div class="meta-pills">
-      <span id="pill-lean" class="pill">Lean: loading...</span>
-      <span id="pill-mem" class="pill">Commit: --</span>
-      <span id="pill-llm" class="pill">LLM: --</span>
-      <button id="btn-new-proj">+ New Project (pcvh init)</button>
-      <button id="btn-theme">Light</button>
+
+    <div class="topbar-right">
+      <span class="tel-item" id="tel-lean">Lean: <b>loading...</b></span>
+      <span class="tel-item" id="tel-mem">Commit: <b>--</b></span>
+      <span class="tel-item" id="tel-llm">Prover: <b>--</b></span>
+      <a class="nav-link" href="/showcase" target="_blank">Specifications Monograph ↗</a>
+      <a class="nav-link" href="/eval" target="_blank">Eval-40 Report ↗</a>
+      <button class="subtle" id="btn-new-proj" type="button">+ New Spec</button>
+      <button class="subtle" id="btn-mode" type="button">Mode: Paper</button>
     </div>
   </header>
 
-  <div class="layout">
-    <aside>
-      <div class="sidebar-hdr">
-        <span>Blueprints &amp; Specs</span>
-        <button id="btn-refresh" style="padding:3px 8px;font-size:11px;">Refresh</button>
+  <div id="notice-bar">
+    <span id="notice-text"></span>
+    <button class="subtle" type="button" onclick="hideNotice()">Dismiss</button>
+  </div>
+
+  <div class="workbench">
+    <aside class="explorer">
+      <div class="explorer-top">
+        <div class="explorer-hdr">
+          <span id="explorer-count">Specifications</span>
+          <button class="subtle" id="btn-refresh" type="button">Refresh</button>
+        </div>
+        <input id="spec-filter" type="text" placeholder="Filter by name, id, or language..." oninput="renderProjectList()" />
       </div>
-      <div id="project-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div id="project-list"></div>
     </aside>
 
-    <main>
-      <div class="toolbar">
-        <div>
-          <div id="proj-heading" style="font-size:18px;font-weight:700;">Select a PCVH Project</div>
-          <div id="proj-sub" class="mono" style="color:var(--muted);margin-top:3px;"></div>
+    <main class="stage">
+      <section class="project-bar">
+        <div class="project-title-row">
+          <h1 id="proj-heading">Select a Specification</h1>
+          <span id="proj-verdict-tag" class="status-tag UNVERIFIED">UNVERIFIED</span>
         </div>
-        <div class="actions">
-          <button class="primary" onclick="triggerAction('verify')">Verify (Palomar Gate)</button>
-          <button class="secondary" onclick="triggerAction('prove')">Autonomous Prove</button>
-          <button onclick="triggerAction('diff-reprove')">Diff Re-Prove</button>
-          <button onclick="triggerAction('falsify')">Stage-2 Falsify</button>
-          <button onclick="triggerAction('pin')">Pin TCB</button>
-          <button onclick="signCurrentProject()">Sign (Ed25519)</button>
-        </div>
-      </div>
+        <div id="proj-ledger"></div>
 
-      <div id="job-panel" class="card" style="display:none;">
-        <div class="card-hdr">
-          <span id="job-title">Job</span>
-          <span id="job-status" class="pill">running</span>
-        </div>
-        <div class="card-body">
-          <div id="job-logs" class="job-log"></div>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-hdr">
-            <div id="file-tabs" class="tabs"></div>
-            <span class="mono" style="color:var(--muted);font-size:11px;">Click any line for live Lean LSP goal</span>
+        <div class="command-row">
+          <div class="action-btns">
+            <button class="primary" type="button" onclick="triggerAction('verify')">Verify (Palomar Gate)</button>
+            <button class="accent-outline" type="button" onclick="triggerAction('prove')">Autonomous Prove</button>
+            <button type="button" onclick="triggerAction('diff-reprove')">Diff Re-Prove</button>
+            <button type="button" onclick="triggerAction('falsify')">Stage-2 Falsify</button>
+            <button type="button" onclick="triggerAction('pin')">Pin TCB</button>
+            <button type="button" onclick="signCurrentProject()">Sign (Ed25519)</button>
           </div>
-          <div id="code-viewer" class="code-box"></div>
-        </div>
 
-        <div class="card">
-          <div class="card-hdr">
-            <span>Live Lean 4 LSP Infoview (<span class="mono">$/lean/plainGoal</span>)</span>
-            <span id="lsp-pos" class="pill">idle</span>
+          <div class="prover-opts">
+            <label for="opt-workers">Workers</label>
+            <select id="opt-workers">
+              <option value="1">1w</option>
+              <option value="2" selected>2w</option>
+              <option value="4">4w</option>
+            </select>
+            <label for="opt-llm">LLM</label>
+            <select id="opt-llm">
+              <option value="auto" selected>auto</option>
+              <option value="none">symbolic-only</option>
+              <option value="anthropic">anthropic</option>
+              <option value="openai">openai</option>
+              <option value="ollama">ollama</option>
+            </select>
           </div>
-          <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
-            <pre id="lsp-goals" class="infoview">Click any line inside a .lean file to query live Lean 4 tactic goals and diagnostics.</pre>
-            <div>
-              <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;">Diagnostics</div>
-              <pre id="lsp-diags" class="infoview" style="max-height:110px;">(none)</pre>
+        </div>
+      </section>
+
+      <!-- Source & Live Lean 4 LSP Split Pane -->
+      <section class="editor-lsp-grid">
+        <div class="source-pane">
+          <div class="pane-bar">
+            <div id="file-tabs" class="file-tabs"></div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <button class="subtle" id="btn-toggle-edit" type="button" onclick="toggleEditMode()">Edit File</button>
+              <button class="subtle" type="button" onclick="copyCurrentFile()">Copy</button>
+            </div>
+          </div>
+
+          <div class="sub-bar">
+            <div id="thm-jumps" class="thm-jumps"></div>
+            <span id="file-hint">Click any .lean line (or ↑/↓) for live LSP goal</span>
+          </div>
+
+          <div id="code-viewer" class="code-scroll" tabindex="0"></div>
+
+          <div id="code-editor-wrap">
+            <textarea id="code-editor" spellcheck="false"></textarea>
+            <div class="editor-footer">
+              <label id="tcb-unlock-wrap" style="display:none;align-items:center;gap:6px;color:var(--accent);cursor:pointer;">
+                <input type="checkbox" id="chk-allow-tcb" style="width:auto;margin:0;" />
+                Unlock TCB Edit (requires Pin TCB afterwards)
+              </label>
+              <span id="editor-status" style="color:var(--ink-muted);">Ctrl+S to save · Click Check Buffer to test unsaved tactics in Lean LSP</span>
+              <div style="display:flex;gap:6px;margin-left:auto;">
+                <button class="subtle" type="button" id="btn-lsp-buffer" onclick="checkEditorBufferLSP()">Check Buffer in LSP</button>
+                <button class="subtle" type="button" onclick="revertEditor()">Revert</button>
+                <button class="primary" type="button" onclick="saveCurrentFile()">Save File</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="card">
-        <div class="card-hdr">
-          <span>Signed Proof Attestation Inspector</span>
-          <span id="att-verdict" class="badge UNVERIFIED">UNVERIFIED</span>
+        <div class="lsp-pane">
+          <div class="pane-bar">
+            <span style="font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--ink);">
+              Live Lean 4 LSP Infoview (<code>$/lean/plainGoal</code>)
+            </span>
+            <span id="lsp-pos" style="font-family:var(--mono);font-size:11px;color:var(--ink-muted);">idle</span>
+          </div>
+          <div class="lsp-body">
+            <div>
+              <div class="section-label">
+                <span>Tactic Goal State</span>
+                <span id="lsp-goal-count"></span>
+              </div>
+              <pre id="lsp-goals" class="infoview-box" style="min-height:215px;max-height:255px;">Select any line inside a .lean specification or proof module to inspect live Lean 4.33.1 tactic goals.</pre>
+            </div>
+            <div>
+              <div class="section-label">
+                <span>Elaborator Diagnostics</span>
+                <span id="lsp-diag-count"></span>
+              </div>
+              <pre id="lsp-diags" class="infoview-box" style="min-height:82px;max-height:115px;">(no diagnostics)</pre>
+            </div>
+          </div>
         </div>
-        <div class="card-body" id="att-body">
-          <div style="color:var(--muted);font-size:13px;">No attestation yet. Run <strong>Verify (Palomar Gate)</strong> above.</div>
+      </section>
+
+      <!-- Lower Tabbed Inspector -->
+      <section class="inspector">
+        <div class="pane-bar">
+          <div class="file-tabs">
+            <button class="file-tab active" id="insp-tab-att" type="button" onclick="switchInspector('att')">Attestation &amp; Ed25519 DSSE</button>
+            <button class="file-tab" id="insp-tab-tcb" type="button" onclick="switchInspector('tcb')">TCB Lock Manifest (spec.lock.json)</button>
+            <button class="file-tab" id="insp-tab-jobs" type="button" onclick="switchInspector('jobs')">Job Console &amp; History <span id="job-tab-badge"></span></button>
+          </div>
+          <div id="att-actions" style="display:flex;gap:6px;">
+            <button class="subtle" type="button" onclick="downloadAttestation()">Download JSON</button>
+          </div>
         </div>
-      </div>
+
+        <div class="inspector-body" id="insp-pane-att"></div>
+        <div class="inspector-body" id="insp-pane-tcb" style="display:none;"></div>
+        <div class="inspector-body" id="insp-pane-jobs" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-family:var(--mono);font-size:11px;color:var(--ink-muted);">Recent Jobs:</span>
+              <select id="job-selector" onchange="selectJobFromHistory(this.value)" style="min-width:260px;"></select>
+            </div>
+            <span id="job-status-label" style="font-family:var(--mono);font-size:11.5px;color:var(--ink-muted);">No jobs executed in this session</span>
+          </div>
+          <pre id="job-logs" class="job-console">Trigger Verify, Autonomous Prove, Diff Re-Prove, Stage-2 Falsify, or Pin TCB above to stream execution logs.</pre>
+        </div>
+      </section>
     </main>
   </div>
 
+  <!-- Scaffold Modal -->
   <div id="init-modal" class="modal-backdrop">
     <div class="modal">
-      <div style="font-size:16px;font-weight:700;">Scaffold Multi-Language PCVH Project</div>
-      <div>
-        <label>Relative Directory (under workspace root)</label>
+      <h3>Scaffold New Specification (`pcvh init`)</h3>
+      <div class="field">
+        <label for="init-dir">Relative Directory (under workspace root)</label>
         <input id="init-dir" placeholder="examples/my_rust_limiter" />
       </div>
-      <div>
-        <label>Target Production Language</label>
+      <div class="field">
+        <label for="init-lang">Target Production Runtime</label>
         <select id="init-lang">
-          <option value="rust">Rust (cargo test + differential binary)</option>
+          <option value="rust">Rust (cargo test + differential trace binary)</option>
           <option value="typescript">TypeScript (Node.js native TS / tsx)</option>
           <option value="solidity">Solidity / Foundry (forge test + uint256 bridge)</option>
           <option value="python">Python (target.py + differential bridge)</option>
         </select>
       </div>
-      <div>
-        <label>Formal Specification Template</label>
+      <div class="field">
+        <label for="init-tmpl">Formal Specification Template</label>
         <select id="init-tmpl">
           <option value="ratelimit">Token-Bucket Rate Limiter (5 invariants)</option>
           <option value="vault">ERC-4626 Share Vault &amp; Constant-Product AMM (5 invariants)</option>
           <option value="ledger">Double-Entry Atomic Transfer Core (4 invariants)</option>
         </select>
       </div>
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
-        <button onclick="closeInitModal()">Cancel</button>
-        <button class="primary" onclick="submitInit()">Create &amp; Pin TCB</button>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+        <button type="button" onclick="closeInitModal()">Cancel</button>
+        <button class="primary" type="button" onclick="submitInit()">Create &amp; Pin TCB</button>
       </div>
     </div>
   </div>
@@ -382,191 +896,500 @@
     let currentProj = null;
     let currentDetail = null;
     let activeFile = null;
+    let selectedLine = null;
+    let editMode = false;
+    let activeInspector = "att";
+    let activeJobId = null;
     let activeJobTimer = null;
+    let lastStudioPubKey = "";
+    let fileDiagnostics = {};
+
+    const TOKEN_RE = /\b(theorem|lemma|def|private|structure|inductive|where|by|sorry|have|let|in|if|then|else|match|with|induction|generalizing|rcases|unfold|simp|simp_all|omega|grind|rw|exact|all_goals|try|open|namespace|end|export|function|interface|return|pub|fn|struct|impl|use|class|self|import|from)\b|\b(Nat|Int|Bool|String|List|Prop|IO|Unit|Decision|DecisionCode|Policy|GuardState|ToolCall|Order|MatchOutcome|QuoteBalances|ReplayWindow|Expr|ValidatorVote|LedgerState|TransferEvent|StepResult|SqMetric|Q3Cat0|u64|u128|usize|bool|int|uint256)\b|\b(\d[\d_]*)\b/g;
 
     function esc(s) {
-      return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    document.getElementById("btn-theme").onclick = () => {
-      const root = document.documentElement;
-      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-      root.setAttribute("data-theme", next);
-      document.getElementById("btn-theme").textContent = next === "dark" ? "Light" : "Dark";
+    function highlightLine(rawLine) {
+      const escaped = esc(rawLine);
+      let cmIdx = -1;
+      for (const marker of ["--", "//"]) {
+        const i = escaped.indexOf(marker);
+        if (i !== -1 && (cmIdx === -1 || i < cmIdx)) cmIdx = i;
+      }
+      if (cmIdx === -1 && escaped.trimStart().startsWith("#")) {
+        cmIdx = escaped.indexOf("#");
+      }
+      const codePart = cmIdx === -1 ? escaped : escaped.slice(0, cmIdx);
+      const cmPart = cmIdx === -1 ? "" : `<span class="syn-cm">${escaped.slice(cmIdx)}</span>`;
+      const tok = codePart.replace(TOKEN_RE, (m, kw, ty, num) => {
+        if (kw) return `<span class="syn-kw">${kw}</span>`;
+        if (ty) return `<span class="syn-ty">${ty}</span>`;
+        return `<span class="syn-num">${num}</span>`;
+      });
+      return tok + cmPart;
+    }
+
+    // Mode persistence shared with /showcase and /eval
+    function applyMode(mode) {
+      const m = mode === "dusk" ? "dusk" : "paper";
+      document.documentElement.setAttribute("data-mode", m);
+      document.getElementById("btn-mode").textContent = m === "paper" ? "Mode: Paper" : "Mode: Dusk";
+      try { localStorage.setItem("pcvh_mode", m); } catch (_) {}
+    }
+    try {
+      const saved = localStorage.getItem("pcvh_mode");
+      if (saved) applyMode(saved);
+    } catch (_) {}
+
+    document.getElementById("btn-mode").onclick = () => {
+      const cur = document.documentElement.getAttribute("data-mode");
+      applyMode(cur === "paper" ? "dusk" : "paper");
     };
-    document.getElementById("btn-refresh").onclick = loadOverview;
+
+    function notify(msg, kind = "info") {
+      const bar = document.getElementById("notice-bar");
+      bar.className = `show ${kind}`;
+      document.getElementById("notice-text").textContent = msg;
+    }
+    function hideNotice() {
+      document.getElementById("notice-bar").className = "";
+    }
+
+    document.getElementById("btn-refresh").onclick = () => loadOverview();
     document.getElementById("btn-new-proj").onclick = () => document.getElementById("init-modal").classList.add("open");
     function closeInitModal() { document.getElementById("init-modal").classList.remove("open"); }
+
+    function switchInspector(which) {
+      activeInspector = which;
+      ["att", "tcb", "jobs"].forEach((k) => {
+        document.getElementById(`insp-tab-${k}`).classList.toggle("active", k === which);
+        document.getElementById(`insp-pane-${k}`).style.display = k === which ? "block" : "none";
+      });
+      document.getElementById("att-actions").style.display = which === "att" ? "flex" : "none";
+    }
 
     async function loadOverview() {
       const resp = await fetch("/api/overview");
       overview = await resp.json();
 
-      const leanPill = document.getElementById("pill-lean");
-      leanPill.textContent = overview.lean_bin ? "Lean 4.33.1 ready" : "Lean not found";
-      leanPill.className = "pill " + (overview.lean_bin ? "ok" : "err");
+      const telLean = document.getElementById("tel-lean");
+      telLean.className = "tel-item " + (overview.lean_bin ? "ok" : "err");
+      telLean.innerHTML = overview.lean_bin ? "Lean: <b>4.33.1 ready</b>" : "Lean: <b>not found</b>";
 
-      const memPill = document.getElementById("pill-mem");
-      memPill.textContent = overview.commit_avail_gb != null
-        ? `Commit free: ${overview.commit_avail_gb} GB (${overview.recommended_workers}w)`
-        : "Commit: n/a";
+      const telMem = document.getElementById("tel-mem");
+      telMem.innerHTML = overview.commit_avail_gb != null
+        ? `Commit: <b>${overview.commit_avail_gb} GB</b> (${overview.recommended_workers}w)`
+        : "Commit: <b>n/a</b>";
 
-      const configuredLLMs = (overview.llm_providers || []).filter(p => p.configured).map(p => p.provider);
-      document.getElementById("pill-llm").textContent = configuredLLMs.length
-        ? "LLM: " + configuredLLMs.join(",")
-        : "LLM: symbolic/local";
+      if (overview.recommended_workers) {
+        const wSel = document.getElementById("opt-workers");
+        if ([...wSel.options].some((o) => Number(o.value) === overview.recommended_workers)) {
+          wSel.value = String(overview.recommended_workers);
+        }
+      }
+
+      const configuredLLMs = (overview.llm_providers || []).filter((p) => p.configured).map((p) => p.provider);
+      document.getElementById("tel-llm").innerHTML = configuredLLMs.length
+        ? `Prover: <b>${esc(configuredLLMs.join("+"))}</b>`
+        : "Prover: <b>symbolic + LSP</b>";
+
+      renderProjectList();
+      renderJobHistorySelector();
+
+      if (!currentProj && overview.projects && overview.projects.length > 0) {
+        await selectProject(overview.projects[0].id);
+      }
+    }
+
+    function renderProjectList() {
+      const projs = overview?.projects || [];
+      const q = (document.getElementById("spec-filter").value || "").trim().toLowerCase();
+      const verifiedTotal = projs.filter((p) => p.verdict === "VERIFIED").length;
+      const thmTotal = projs.reduce((acc, p) => acc + (p.verified_count || 0), 0);
+      document.getElementById("explorer-count").textContent = `${verifiedTotal}/${projs.length} Verified · ${thmTotal} thms`;
 
       const list = document.getElementById("project-list");
       list.innerHTML = "";
-      (overview.projects || []).forEach(p => {
-        const card = document.createElement("div");
-        card.className = "proj-card" + (currentProj === p.id ? " active" : "");
-        card.onclick = () => selectProject(p.id);
-        card.innerHTML = `
-          <div class="proj-title">${esc(p.name)}</div>
-          <div class="proj-row">
-            <span class="badge ${esc(p.verdict)}">${esc(p.verdict)}</span>
-            <span class="badge lang">${esc(p.language || "python")}</span>
-            ${p.signed ? '<span class="badge signed">Ed25519</span>' : ''}
-          </div>
-          <div class="mono" style="font-size:11px;color:var(--muted);">${esc(p.id)} &middot; ${p.verified_count || 0} thms</div>
-        `;
-        list.appendChild(card);
-      });
+      projs
+        .filter((p) => !q || `${p.id} ${p.name} ${p.language || ""}`.toLowerCase().includes(q))
+        .forEach((p) => {
+          const item = document.createElement("div");
+          item.className = "spec-item" + (currentProj === p.id ? " active" : "");
+          item.onclick = () => selectProject(p.id);
+          item.innerHTML = `
+            <div class="spec-item-top">
+              <span class="spec-item-name">${esc(p.name)}</span>
+              <span class="status-tag ${esc(p.verdict)}">${esc(p.verdict)}</span>
+            </div>
+            <div class="spec-item-meta">
+              <span>${esc(p.id)}</span>
+              <span>${esc(p.language || "python")} · ${p.verified_count || 0} thms${p.signed ? " · DSSE" : ""}</span>
+            </div>
+          `;
+          list.appendChild(item);
+        });
+    }
 
-      if (!currentProj && overview.projects && overview.projects.length > 0) {
-        selectProject(overview.projects[0].id);
-      }
+    function isProtectedTcbFile(relPath) {
+      if (!currentDetail) return false;
+      return [currentDetail.statement_rel, currentDetail.challenge_rel, "lakefile.toml", "lean-toolchain"].includes(relPath);
     }
 
     async function selectProject(pid) {
       currentProj = pid;
-      document.querySelectorAll(".proj-card").forEach((el, i) => {
-        el.classList.toggle("active", overview.projects[i]?.id === pid);
-      });
+      renderProjectList();
       const resp = await fetch("/api/project?id=" + encodeURIComponent(pid));
       currentDetail = await resp.json();
-      document.getElementById("proj-heading").textContent = currentDetail.name;
-      document.getElementById("proj-sub").textContent =
-        `${currentDetail.id} | lang=${currentDetail.language} | toolchain=${currentDetail.toolchain} | TCB=${currentDetail.tcb_ok ? "PINNED OK" : "UNPINNED/MODIFIED"}`;
+      fileDiagnostics = {};
 
-      const tabs = document.getElementById("file-tabs");
-      tabs.innerHTML = "";
+      document.getElementById("proj-heading").textContent = currentDetail.name;
+      const vTag = document.getElementById("proj-verdict-tag");
+      const verdict = currentDetail.attestation?.verdict || "UNVERIFIED";
+      vTag.className = `status-tag ${verdict}`;
+      vTag.textContent = verdict + (currentDetail.attestation?.signature_envelope ? " · Ed25519 SIGNED" : "");
+
+      const lockHash = currentDetail.lock?.spec_bundle_sha256
+        ? `${currentDetail.lock.spec_bundle_sha256.slice(0, 16)}...`
+        : "unpinned";
+      document.getElementById("proj-ledger").innerHTML = `
+        <span>Path: <b>${esc(currentDetail.id)}</b></span>
+        <span>Runtime: <b>${esc(currentDetail.language)}</b></span>
+        <span>Toolchain: <b>${esc(currentDetail.toolchain)}</b></span>
+        <span>TCB: <b style="color:${currentDetail.tcb_ok ? "var(--verified)" : "var(--err)"}">${currentDetail.tcb_ok ? "PINNED OK" : "MODIFIED / UNPINNED"}</b></span>
+        <span>Spec SHA-256: <b>${esc(lockHash)}</b></span>
+      `;
+
       const fileKeys = Object.keys(currentDetail.files || {});
-      if (!activeFile || !fileKeys.includes(activeFile)) activeFile = fileKeys[0];
-      fileKeys.forEach(k => {
-        const btn = document.createElement("button");
-        btn.className = "tab" + (k === activeFile ? " active" : "");
-        const isTcb = k === currentDetail.statement_rel || k === currentDetail.challenge_rel;
-        btn.textContent = (isTcb ? "🔒 " : "") + k;
-        btn.onclick = () => { activeFile = k; renderCode(); renderTabs(); };
-        tabs.appendChild(btn);
-      });
+      if (!activeFile || !fileKeys.includes(activeFile)) {
+        activeFile = fileKeys.includes(currentDetail.challenge_rel) ? currentDetail.challenge_rel : fileKeys[0];
+      }
+      if (editMode) setEditMode(false);
+      renderTabs();
       renderCode();
       renderAttestation();
+      renderTcbLock();
     }
 
     function renderTabs() {
-      const fileKeys = Object.keys(currentDetail.files || {});
-      document.querySelectorAll("#file-tabs .tab").forEach((b, i) => {
-        b.classList.toggle("active", fileKeys[i] === activeFile);
+      const tabs = document.getElementById("file-tabs");
+      tabs.innerHTML = "";
+      Object.keys(currentDetail.files || {}).forEach((k) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "file-tab" + (k === activeFile ? " active" : "");
+        btn.innerHTML = esc(k) + (isProtectedTcbFile(k) ? '<span class="tcb-mark">TCB</span>' : "");
+        btn.onclick = () => {
+          if (editMode) setEditMode(false);
+          activeFile = k;
+          selectedLine = null;
+          renderTabs();
+          renderCode();
+        };
+        tabs.appendChild(btn);
+      });
+    }
+
+    function renderTheoremJumps(lines) {
+      const box = document.getElementById("thm-jumps");
+      box.innerHTML = "";
+      if (!activeFile || !activeFile.endsWith(".lean")) {
+        document.getElementById("file-hint").textContent = "Target / configuration file";
+        return;
+      }
+      document.getElementById("file-hint").textContent = "Click any line (or ↑/↓) for live $/lean/plainGoal";
+      const decls = [];
+      lines.forEach((ln, idx) => {
+        const m = ln.match(/^\s*(?:private\s+)?(theorem|lemma)\s+([A-Za-z0-9_']+)/);
+        if (m) decls.push({ name: m[2], line: idx + 1 });
+      });
+      if (!decls.length) return;
+      const lbl = document.createElement("span");
+      lbl.textContent = "Theorems:";
+      box.appendChild(lbl);
+      decls.forEach((d) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "jump-chip";
+        b.textContent = d.name;
+        b.onclick = () => {
+          // Find the `sorry` or first tactic line right under this theorem
+          let targetLine = d.line;
+          for (let j = d.line - 1; j < Math.min(lines.length, d.line + 12); j++) {
+            if (lines[j].includes(":= by") && j + 2 <= lines.length) {
+              targetLine = j + 2;
+              break;
+            }
+          }
+          selectCodeLine(targetLine, true);
+        };
+        box.appendChild(b);
       });
     }
 
     function renderCode() {
       const box = document.getElementById("code-viewer");
-      const text = (currentDetail.files || {})[activeFile] || "";
+      const text = (currentDetail?.files || {})[activeFile] || "";
       const lines = text.split("\n");
+      renderTheoremJumps(lines);
+      const diags = fileDiagnostics[activeFile] || [];
+      const diagByLine = {};
+      diags.forEach((d) => {
+        diagByLine[d.line] = d.severity === "error" ? "diag-err" : (diagByLine[d.line] || "diag-warn");
+      });
+
       box.innerHTML = "";
       lines.forEach((line, idx) => {
+        const lineNo = idx + 1;
         const row = document.createElement("div");
-        row.className = "code-line";
-        row.innerHTML = `<span class="ln">${idx + 1}</span><span class="src">${esc(line)}</span>`;
-        row.onclick = () => {
-          box.querySelectorAll(".code-line.selected").forEach(x => x.classList.remove("selected"));
-          row.classList.add("selected");
-          if (activeFile.endsWith(".lean")) queryLSP(activeFile, idx + 1, 2);
-        };
+        row.className = "code-line" +
+          (selectedLine === lineNo ? " selected" : "") +
+          (diagByLine[lineNo] ? ` ${diagByLine[lineNo]}` : "");
+        row.dataset.line = String(lineNo);
+        row.innerHTML = `<span class="ln">${lineNo}</span><span class="src">${highlightLine(line)}</span>`;
+        row.onclick = () => selectCodeLine(lineNo, false);
         box.appendChild(row);
       });
     }
 
-    async function queryLSP(relFile, line, col) {
+    function selectCodeLine(lineNo, scrollIntoView) {
+      selectedLine = lineNo;
+      const box = document.getElementById("code-viewer");
+      box.querySelectorAll(".code-line").forEach((el) => {
+        const match = Number(el.dataset.line) === lineNo;
+        el.classList.toggle("selected", match);
+        if (match && scrollIntoView) el.scrollIntoView({ block: "center" });
+      });
+      if (activeFile && activeFile.endsWith(".lean")) {
+        const rawLine = ((currentDetail?.files || {})[activeFile] || "").split("\n")[lineNo - 1] || "";
+        const indentCol = Math.max(0, rawLine.search(/\S|$/));
+        queryLSP(activeFile, lineNo, indentCol, null);
+      }
+    }
+
+    document.getElementById("code-viewer").addEventListener("keydown", (ev) => {
+      if (!activeFile || editMode) return;
+      const total = (((currentDetail?.files || {})[activeFile] || "").split("\n")).length;
+      if (ev.key === "ArrowDown") {
+        ev.preventDefault();
+        selectCodeLine(Math.min(total, (selectedLine || 0) + 1), true);
+      } else if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        selectCodeLine(Math.max(1, (selectedLine || 2) - 1), true);
+      }
+    });
+
+    function setEditMode(on) {
+      editMode = on;
+      document.getElementById("code-viewer").style.display = on ? "none" : "block";
+      document.getElementById("code-editor-wrap").style.display = on ? "flex" : "none";
+      document.getElementById("btn-toggle-edit").textContent = on ? "Inspect Mode" : "Edit File";
+      if (on) {
+        const ed = document.getElementById("code-editor");
+        ed.value = (currentDetail?.files || {})[activeFile] || "";
+        const tcb = isProtectedTcbFile(activeFile);
+        document.getElementById("tcb-unlock-wrap").style.display = tcb ? "inline-flex" : "none";
+        document.getElementById("chk-allow-tcb").checked = false;
+        document.getElementById("btn-lsp-buffer").style.display = activeFile?.endsWith(".lean") ? "inline-block" : "none";
+        ed.focus();
+      }
+    }
+
+    function toggleEditMode() {
+      if (!currentDetail || !activeFile) return;
+      setEditMode(!editMode);
+    }
+
+    function revertEditor() {
+      document.getElementById("code-editor").value = (currentDetail?.files || {})[activeFile] || "";
+      notify("Reverted editor buffer to saved file.", "info");
+    }
+
+    function getEditorCursorPos() {
+      const ed = document.getElementById("code-editor");
+      const upto = ed.value.slice(0, ed.selectionStart || 0).split("\n");
+      const line = upto.length;
+      const col = upto[upto.length - 1].length;
+      return { line, col };
+    }
+
+    async function checkEditorBufferLSP() {
+      if (!activeFile || !activeFile.endsWith(".lean")) return;
+      const { line, col } = getEditorCursorPos();
+      const content = document.getElementById("code-editor").value;
+      await queryLSP(activeFile, line, col, content);
+    }
+
+    document.getElementById("code-editor").addEventListener("keydown", (ev) => {
+      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s") {
+        ev.preventDefault();
+        saveCurrentFile();
+      }
+    });
+
+    async function saveCurrentFile() {
+      if (!currentProj || !activeFile) return;
+      const content = document.getElementById("code-editor").value;
+      const allowTcb = document.getElementById("chk-allow-tcb").checked;
+      const resp = await fetch("/api/file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: currentProj, path: activeFile, content, allow_tcb: allowTcb }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        notify(data.error || "Save failed.", "err");
+        return;
+      }
+      notify(`Saved ${activeFile} (${data.bytes} bytes).`, "ok");
+      await loadOverview();
+      await selectProject(currentProj);
+    }
+
+    function copyCurrentFile() {
+      const text = editMode
+        ? document.getElementById("code-editor").value
+        : ((currentDetail?.files || {})[activeFile] || "");
+      navigator.clipboard.writeText(text).then(() => notify(`Copied ${activeFile} to clipboard.`, "ok"));
+    }
+
+    async function queryLSP(relFile, line, col, contentOverride) {
       const pos = document.getElementById("lsp-pos");
-      pos.textContent = `${relFile}:${line} querying...`;
-      pos.className = "pill warn";
-      document.getElementById("lsp-goals").textContent = "Querying live Lean 4.33.1 LSP...";
+      pos.textContent = `${relFile}:${line}:${col} · querying...`;
+      document.getElementById("lsp-goals").textContent = "Querying Lean 4.33.1 language server...";
       try {
+        const payload = { project_id: currentProj, rel_file: relFile, line, col };
+        if (contentOverride !== null && contentOverride !== undefined) {
+          payload.content = contentOverride;
+        }
         const resp = await fetch("/api/lsp/goals", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ project_id: currentProj, rel_file: relFile, line, col }),
+          body: JSON.stringify(payload),
         });
         const data = await resp.json();
-        pos.textContent = `${relFile}:${line}:${col}`;
-        pos.className = "pill ok";
-        document.getElementById("lsp-goals").textContent =
-          (data.goals && data.goals.length) ? data.goals.join("\n\n---\n\n") : "(no active tactic goal at this line)";
-        document.getElementById("lsp-diags").textContent =
-          (data.diagnostics && data.diagnostics.length)
-            ? data.diagnostics.map(d => `L${d.line}:${d.column} [${d.severity}] ${d.message}`).join("\n")
-            : "(0 diagnostics)";
+        if (!resp.ok) throw new Error(data.error || resp.statusText);
+
+        const goals = data.goals || [];
+        const diags = data.diagnostics || [];
+        fileDiagnostics[relFile] = diags;
+        if (!editMode && relFile === activeFile) renderCode();
+
+        pos.textContent = `${relFile}:${line}:${col}` + (contentOverride != null ? " (unsaved buffer)" : "");
+        document.getElementById("lsp-goal-count").textContent = `${goals.length} goal(s)`;
+        document.getElementById("lsp-goals").textContent = goals.length
+          ? goals.join("\n\n────────────────────────────────────────\n\n")
+          : "Goals accomplished / no active tactic goal at this position.";
+
+        document.getElementById("lsp-diag-count").textContent = `${diags.length} item(s)`;
+        document.getElementById("lsp-diags").textContent = diags.length
+          ? diags.map((d) => `L${d.line}:${d.column} [${d.severity}] ${d.message}`).join("\n\n")
+          : "(0 diagnostics)";
       } catch (e) {
-        pos.className = "pill err";
-        document.getElementById("lsp-goals").textContent = "LSP Error: " + e;
+        pos.textContent = "LSP error";
+        document.getElementById("lsp-goals").textContent = "Lean LSP Error: " + e.message;
       }
     }
 
     function renderAttestation() {
-      const att = currentDetail.attestation;
-      const badge = document.getElementById("att-verdict");
-      const body = document.getElementById("att-body");
+      const att = currentDetail?.attestation;
+      const pane = document.getElementById("insp-pane-att");
       if (!att) {
-        badge.className = "badge UNVERIFIED";
-        badge.textContent = "UNVERIFIED";
-        body.innerHTML = `<div style="color:var(--muted);font-size:13px;">No proof-attestation.json found. Click <strong>Verify (Palomar Gate)</strong>.</div>`;
+        pane.innerHTML = `<div style="color:var(--ink-muted);">No <code>proof-attestation.json</code> recorded yet. Run <strong>Verify (Palomar Gate)</strong> above.</div>`;
         return;
       }
-      badge.className = "badge " + att.verdict;
-      badge.textContent = att.verdict + (att.signature_envelope ? " · Ed25519 SIGNED" : "");
 
-      const thmChips = (att.verified_theorems || []).map(t => `<span class="chip">✓ ${esc(t)}</span>`).join("");
-      const axChips = (att.axioms_used || []).map(a => `<span class="chip">${esc(a)}</span>`).join("");
-      const rows = Object.entries(att.checks || {}).map(([k, v]) =>
-        `<tr><td class="mono">${esc(k)}</td><td class="mono">${esc(v)}</td></tr>`
-      ).join("");
+      const thms = (att.verified_theorems || []).map((t) => `<span class="thm-item">${esc(t)}</span>`).join("");
+      const axs = (att.axioms_used || []).map((a) => `<span class="thm-item">${esc(a)}</span>`).join("");
+      const checkRows = Object.entries(att.checks || {}).map(([k, v]) => {
+        const s = String(v);
+        const col = s.startsWith("PASS") ? "var(--verified)" : s.startsWith("FAIL") ? "var(--err)" : "var(--ink-muted)";
+        return `<tr><td>${esc(k)}</td><td style="color:${col};">${esc(s)}</td></tr>`;
+      }).join("");
 
-      const sigBlock = att.signature_envelope
-        ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
-             <div style="font-weight:600;font-size:13px;margin-bottom:6px;">Cryptographic Ed25519 DSSE Signature Verifier</div>
-             <div class="mono" style="color:var(--muted);margin-bottom:6px;">
-               keyid=${esc(att.signature_envelope.signatures?.[0]?.keyid)} | alg=${esc(att.signature_envelope.signatures?.[0]?.alg)}
+      const sigEnv = att.signature_envelope;
+      const sigHtml = sigEnv
+        ? `<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--rule);">
+             <div class="section-label"><span>Cryptographic Ed25519 DSSEv1 Signature Verification</span></div>
+             <div style="font-family:var(--mono);font-size:11.5px;color:var(--ink-muted);margin-bottom:8px;">
+               keyid=<b>${esc(sigEnv.signatures?.[0]?.keyid)}</b> · alg=<b>${esc(sigEnv.signatures?.[0]?.alg)}</b>
              </div>
-             <textarea id="sig-pub-pem" rows="3" placeholder="Paste Ed25519 Public Key PEM (-----BEGIN PUBLIC KEY-----...)"></textarea>
-             <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
-               <button onclick="verifySignature()">Verify Ed25519 Signature</button>
-               <span id="sig-result" class="mono"></span>
+             <textarea id="sig-pub-pem" rows="3" style="width:100%;" placeholder="Paste Ed25519 Public Key PEM (-----BEGIN PUBLIC KEY-----...)"></textarea>
+             <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
+               <button type="button" onclick="verifySignature()">Verify Signature</button>
+               ${lastStudioPubKey ? '<button class="subtle" type="button" onclick="copyStudioPubKey()">Copy Public Key PEM</button>' : ''}
+               <span id="sig-result" style="font-family:var(--mono);font-size:11.5px;"></span>
              </div>
            </div>`
         : "";
 
-      body.innerHTML = `
-        <div class="mono" style="color:var(--muted);margin-bottom:8px;">
-          Spec SHA-256: ${esc(att.spec_bundle_sha256)} &middot; Attestation SHA-256: ${esc(att.attestation_sha256)} &middot; ${att.duration_s}s
+      pane.innerHTML = `
+        <div style="font-family:var(--mono);font-size:11.5px;color:var(--ink-muted);margin-bottom:12px;">
+          Verdict: <b style="color:${att.verdict === "VERIFIED" ? "var(--verified)" : "var(--err)"}">${esc(att.verdict)}</b>
+          · Spec SHA-256: <b>${esc(att.spec_bundle_sha256)}</b>
+          · Duration: <b>${att.duration_s}s</b>
         </div>
-        <div><strong style="font-size:12px;">Verified Theorems (${(att.verified_theorems || []).length}):</strong><div class="chips">${thmChips}</div></div>
-        <div style="margin-top:10px;"><strong style="font-size:12px;">Kernel Axioms Used:</strong><div class="chips">${axChips}</div></div>
-        <table class="checks-table" style="margin-top:12px;">
-          <thead><tr><th>Check Stage</th><th>Outcome</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        ${sigBlock}
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:start;">
+          <table class="data-table">
+            <thead><tr><th>Palomar Gate Stage</th><th>Outcome</th></tr></thead>
+            <tbody>${checkRows}</tbody>
+          </table>
+          <div>
+            <div class="section-label"><span>Verified Theorems (${(att.verified_theorems || []).length})</span></div>
+            <div class="thm-list">${thms || '<span style="color:var(--ink-muted);">none</span>'}</div>
+            <div class="section-label" style="margin-top:14px;"><span>Kernel Axioms Collected</span></div>
+            <div class="thm-list">${axs || '<span style="color:var(--ink-muted);">none</span>'}</div>
+          </div>
+        </div>
+        ${sigHtml}
       `;
       const box = document.getElementById("sig-pub-pem");
       if (box && lastStudioPubKey && !box.value) box.value = lastStudioPubKey;
     }
 
-    let lastStudioPubKey = "";
+    function renderTcbLock() {
+      const pane = document.getElementById("insp-pane-tcb");
+      const lock = currentDetail?.lock;
+      if (!lock) {
+        pane.innerHTML = `<div style="color:var(--ink-muted);">No <code>spec.lock.json</code> found. Click <strong>Pin TCB</strong> to lock specification hashes.</div>`;
+        return;
+      }
+      const rows = Object.entries(lock.files || {}).map(([f, h]) => {
+        const mismatch = (currentDetail.tcb_mismatched || []).includes(f);
+        const missing = (currentDetail.tcb_missing || []).includes(f);
+        const st = missing ? "MISSING" : mismatch ? "MODIFIED" : "MATCH";
+        const col = st === "MATCH" ? "var(--verified)" : "var(--err)";
+        return `<tr><td>${esc(f)}</td><td>${esc(h)}</td><td style="color:${col};">${st}</td></tr>`;
+      }).join("");
+      pane.innerHTML = `
+        <div style="font-family:var(--mono);font-size:11.5px;color:var(--ink-muted);margin-bottom:10px;">
+          Bundle SHA-256: <b style="color:var(--ink);">${esc(lock.spec_bundle_sha256)}</b>
+          · Pinned UTC: <b>${esc(lock.pinned_at || lock.pinned_at_utc || "n/a")}</b>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Protected TCB File</th><th>Pinned SHA-256 Digest</th><th>Status</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function downloadAttestation() {
+      if (!currentDetail?.attestation) {
+        notify("No attestation available to download yet.", "err");
+        return;
+      }
+      const blob = new Blob([JSON.stringify(currentDetail.attestation, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${currentDetail.name}-proof-attestation.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function copyStudioPubKey() {
+      if (!lastStudioPubKey) return;
+      navigator.clipboard.writeText(lastStudioPubKey).then(() => notify("Copied Studio Ed25519 public key PEM.", "ok"));
+    }
 
     async function signCurrentProject() {
       if (!currentProj) return;
@@ -576,12 +1399,15 @@
         body: JSON.stringify({ project_id: currentProj }),
       });
       const data = await resp.json();
-      if (!resp.ok) return alert("Sign failed: " + (data.error || resp.statusText));
+      if (!resp.ok) {
+        notify("Sign failed: " + (data.error || resp.statusText), "err");
+        return;
+      }
       lastStudioPubKey = data.public_key_pem || "";
+      notify(`Signed attestation with Ed25519 (${data.key_id}).`, "ok");
+      switchInspector("att");
       await loadOverview();
       await selectProject(currentProj);
-      const box = document.getElementById("sig-pub-pem");
-      if (box && lastStudioPubKey) box.value = lastStudioPubKey;
     }
 
     async function verifySignature() {
@@ -593,18 +1419,55 @@
         body: JSON.stringify({ project_id: currentProj, public_key_pem: pem }),
       });
       const data = await resp.json();
-      out.textContent = data.ok ? `PASS (${data.algorithm}, key=${data.key_id})` : `FAIL: ${data.reason}`;
-      out.style.color = data.ok ? "var(--ok)" : "var(--err)";
+      out.textContent = data.ok ? `VALID (${data.algorithm}, key=${data.key_id})` : `INVALID: ${data.reason}`;
+      out.style.color = data.ok ? "var(--verified)" : "var(--err)";
+    }
+
+    function renderJobHistorySelector() {
+      const jobs = overview?.jobs || [];
+      const sel = document.getElementById("job-selector");
+      sel.innerHTML = "";
+      if (!jobs.length) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "(no jobs yet)";
+        sel.appendChild(opt);
+        return;
+      }
+      jobs.forEach((j) => {
+        const opt = document.createElement("option");
+        opt.value = j.job_id;
+        opt.textContent = `[${j.status}] ${j.action} · ${j.project_id} (${j.duration_s}s)`;
+        if (j.job_id === activeJobId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function selectJobFromHistory(jid) {
+      if (!jid) return;
+      activeJobId = jid;
+      const jr = await fetch("/api/job?id=" + encodeURIComponent(jid));
+      if (jr.ok) showJob(await jr.json());
     }
 
     async function triggerAction(action) {
       if (!currentProj) return;
+      const options = {
+        parallel_workers: Number(document.getElementById("opt-workers").value || 2),
+        llm_provider: document.getElementById("opt-llm").value,
+      };
+      switchInspector("jobs");
       const resp = await fetch("/api/action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: currentProj, action }),
+        body: JSON.stringify({ project_id: currentProj, action, options }),
       });
       const job = await resp.json();
+      if (!resp.ok) {
+        notify(job.error || "Failed to launch job.", "err");
+        return;
+      }
+      activeJobId = job.job_id;
       showJob(job);
       if (activeJobTimer) clearInterval(activeJobTimer);
       activeJobTimer = setInterval(async () => {
@@ -614,20 +1477,23 @@
         if (cur.status === "succeeded" || cur.status === "failed") {
           clearInterval(activeJobTimer);
           activeJobTimer = null;
+          notify(
+            `${cur.action} on ${cur.project_id} ${cur.status} in ${cur.duration_s}s.`,
+            cur.status === "succeeded" ? "ok" : "err"
+          );
           await loadOverview();
           await selectProject(currentProj);
         }
-      }, 1200);
+      }, 1000);
     }
 
     function showJob(job) {
-      document.getElementById("job-panel").style.display = "flex";
-      document.getElementById("job-title").textContent = `Job ${job.job_id} — ${job.action} (${job.project_id})`;
-      const st = document.getElementById("job-status");
-      st.textContent = `${job.status} (${job.duration_s}s)`;
-      st.className = "pill " + (job.status === "succeeded" ? "ok" : job.status === "failed" ? "err" : "warn");
+      document.getElementById("job-tab-badge").textContent = job.status === "running" ? "· running" : "";
+      const lbl = document.getElementById("job-status-label");
+      lbl.textContent = `Job ${job.job_id} · ${job.action} on ${job.project_id} · ${job.status.toUpperCase()} (${job.duration_s}s)`;
+      lbl.style.color = job.status === "succeeded" ? "var(--verified)" : job.status === "failed" ? "var(--err)" : "var(--warn)";
       const lines = [...(job.logs || [])];
-      if (job.error) lines.push("ERROR: " + job.error);
+      if (job.error && !lines.some((l) => l.includes(job.error))) lines.push("ERROR: " + job.error);
       document.getElementById("job-logs").textContent = lines.join("\n");
     }
 
@@ -635,15 +1501,22 @@
       const dir = document.getElementById("init-dir").value.trim();
       const language = document.getElementById("init-lang").value;
       const template = document.getElementById("init-tmpl").value;
-      if (!dir) return alert("Enter a relative directory name.");
+      if (!dir) {
+        notify("Enter a relative directory name.", "err");
+        return;
+      }
       const resp = await fetch("/api/init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dir, language, template }),
       });
       const data = await resp.json();
-      if (!resp.ok) return alert("Scaffold failed: " + (data.error || resp.statusText));
+      if (!resp.ok) {
+        notify("Scaffold failed: " + (data.error || resp.statusText), "err");
+        return;
+      }
       closeInitModal();
+      notify(`Scaffolded and pinned ${dir} (${language} / ${template}).`, "ok");
       await loadOverview();
       await selectProject(dir.replace(/\\/g, "/"));
     }

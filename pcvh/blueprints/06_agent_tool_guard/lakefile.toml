@@ -1,0 +1,8 @@
+name = "agent_tool_guard_blueprint"
+defaultTargets = ["Specs.AgentGuard.Challenge", "Solution"]
+
+[[lean_lib]]
+name = "Specs"
+
+[[lean_lib]]
+name = "Solution"

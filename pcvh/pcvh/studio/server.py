@@ -89,7 +89,10 @@ class StudioState:
         self._lock = threading.Lock()
         self._jobs: Dict[str, StudioJob] = {}
         self._lsp_pool: Dict[str, tuple[LeanLSPClient, threading.Lock]] = {}
-        self._ui_html = (pathlib.Path(__file__).resolve().parent / "ui.html").read_text(encoding="utf-8")
+        self._ui_html_path = pathlib.Path(__file__).resolve().parent / "ui.html"
+
+    def get_ui_html(self) -> str:
+        return self._ui_html_path.read_text(encoding="utf-8")
 
     def close_project_lsp(self, project_id: str) -> None:
         with self._lock:
@@ -206,8 +209,8 @@ class StudioState:
         for lf_rel in lean_files:
             if lf_rel not in files_map:
                 files_map[lf_rel] = _read_opt(lf_rel)
-        # Expose production target code (`prod_*.py`, `target.py`, `src/lib.rs`, `src/target.ts`, `src/Target.sol`)
-        for cand_glob in ("prod_*.py", "target.py", "src/lib.rs", "src/target.ts", "src/Target.sol", "test/Conformance.t.sol"):
+        # Expose production target code (`prod_*.py`, `target.py`, `src/*.rs`, `src/*.ts`, `src/*.sol`)
+        for cand_glob in ("prod_*.py", "target.py", "src/*.rs", "src/*.ts", "src/*.sol", "test/Conformance.t.sol"):
             for tf in sorted(proj_dir.glob(cand_glob)):
                 rel_t = tf.relative_to(proj_dir).as_posix()
                 if rel_t not in files_map:
@@ -240,6 +243,39 @@ class StudioState:
             raise FileNotFoundError(f"File not found inside project: {rel_file}")
         return fp.read_text(encoding="utf-8", errors="replace")
 
+    def save_project_file(
+        self,
+        project_id: str,
+        rel_file: str,
+        content: str,
+        *,
+        allow_tcb: bool = False,
+    ) -> Dict[str, Any]:
+        proj_dir = self._safe_project_path(project_id)
+        cfg = load_spec_config(proj_dir)
+        clean_rel = rel_file.replace("\\", "/").lstrip("/")
+        if not clean_rel or ".." in pathlib.PurePosixPath(clean_rel).parts:
+            raise ValueError(f"Invalid relative file path: {rel_file}")
+        fp = (proj_dir / clean_rel).resolve()
+        if not fp.is_relative_to(proj_dir):
+            raise ValueError(f"File path escapes project root: {rel_file}")
+
+        tcb_protected = {cfg.statement_rel, cfg.challenge_rel, "lakefile.toml", "lean-toolchain"}
+        if clean_rel in tcb_protected and not allow_tcb:
+            raise ValueError(
+                f"'{clean_rel}' is a protected TCB specification file. Enable 'Unlock TCB Edit' to modify and re-pin."
+            )
+
+        fp.parent.mkdir(parents=True, exist_ok=True)
+        fp.write_text(content, encoding="utf-8", newline="\n")
+        man = verify_tcb_manifest(cfg)
+        return {
+            "ok": True,
+            "path": clean_rel,
+            "bytes": len(content.encode("utf-8")),
+            "tcb_ok": man.ok,
+        }
+
     def _get_or_start_lsp(self, project_id: str, proj_dir: pathlib.Path) -> tuple[LeanLSPClient, threading.Lock]:
         with self._lock:
             existing = self._lsp_pool.get(project_id)
@@ -256,12 +292,20 @@ class StudioState:
             self._lsp_pool[project_id] = (lsp, lock)
             return lsp, lock
 
-    def inspect_lsp_goals(self, project_id: str, rel_file: str, line_1idx: int, col_0idx: int = 0) -> Dict[str, Any]:
+    def inspect_lsp_goals(
+        self,
+        project_id: str,
+        rel_file: str,
+        line_1idx: int,
+        col_0idx: int = 0,
+        *,
+        content_override: Optional[str] = None,
+    ) -> Dict[str, Any]:
         proj_dir = self._safe_project_path(project_id)
         fp = (proj_dir / rel_file).resolve()
         if not fp.is_relative_to(proj_dir) or not fp.exists():
             raise FileNotFoundError(f"Lean file not found: {rel_file}")
-        text = fp.read_text(encoding="utf-8", errors="replace")
+        text = content_override if content_override is not None else fp.read_text(encoding="utf-8", errors="replace")
         lsp, lock = self._get_or_start_lsp(project_id, proj_dir)
         try:
             with lock:
@@ -371,7 +415,11 @@ class StudioState:
                     job.status = "succeeded"
                 elif action == "falsify":
                     res = run_falsification_precheck(cfg, lean_bin=self.lean_bin)
-                    job.logs.append(f"Falsification status={res.status} ({res.samples_evaluated} samples).")
+                    job.logs.append(f"Falsification status={res.status} ({res.samples_evaluated} samples across {len(res.theorems_tested)} theorems).")
+                    for cex in res.counterexamples:
+                        job.logs.append(f"  COUNTEREXAMPLE [{cex.source}] {cex.theorem}: {cex.inputs}")
+                    for note in res.notes:
+                        job.logs.append(f"  note: {note}")
                     job.result = res.to_dict()
                     job.status = "succeeded" if res.ok else "failed"
                 elif action == "verify":
@@ -383,6 +431,10 @@ class StudioState:
                         require_dual_kernel=bool(opts.get("require_dual_kernel", False)),
                         attestation_out=att_fp,
                     )
+                    for chk_k, chk_v in res.checks.items():
+                        job.logs.append(f"  [{chk_k}] {chk_v}")
+                    for reason in res.failure_reasons:
+                        job.logs.append(f"  ! {reason}")
                     job.logs.append(f"Palomar verdict={res.verdict} ({len(res.verified_theorems)} theorems, axioms={res.axioms_used}).")
                     job.result = res.to_attestation_dict()
                     job.status = "succeeded" if res.verdict == "VERIFIED" else "failed"
@@ -395,6 +447,9 @@ class StudioState:
                         parallel_workers=int(opts.get("parallel_workers", cfg.max_parallel_workers)),
                         attestation_out=proj_dir / "proof-attestation.json",
                     )
+                    for pr in res.proof_results:
+                        mark = "PROVED" if pr.proved else "FAILED"
+                        job.logs.append(f"  [{mark}] {pr.theorem_name} (tier={pr.tier_used}, attempts={pr.attempts}, {pr.duration_s:.1f}s)")
                     job.logs.append(
                         f"Autonomous prove status={res.status} (waves={res.waves_executed}, peak_workers={res.peak_parallel_workers})."
                     )
@@ -470,13 +525,38 @@ class _StudioHandler(BaseHTTPRequestHandler):
 
         try:
             if parsed.path in ("/", "/index.html"):
-                body = st._ui_html.encode("utf-8")
+                body = st.get_ui_html().encode("utf-8")
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
                 self.end_headers()
                 self.wfile.write(body)
                 return
+
+            if parsed.path in ("/showcase", "/showcase/"):
+                showcase_fp = pathlib.Path(__file__).resolve().parents[2] / "blueprints_showcase.html"
+                if showcase_fp.exists():
+                    body = showcase_fp.read_bytes()
+                    self.send_response(HTTPStatus.OK)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+
+            if parsed.path in ("/eval", "/eval/"):
+                eval_fp = pathlib.Path(__file__).resolve().parents[2] / "eval_dashboard.html"
+                if eval_fp.exists():
+                    body = eval_fp.read_bytes()
+                    self.send_response(HTTPStatus.OK)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
 
             if parsed.path == "/api/overview":
                 self._send_json(HTTPStatus.OK, st.get_overview())
@@ -529,7 +609,17 @@ class _StudioHandler(BaseHTTPRequestHandler):
                 rel = str(body.get("rel_file", ""))
                 line = int(body.get("line", 1))
                 col = int(body.get("col", 0))
-                res = st.inspect_lsp_goals(pid, rel, line, col)
+                content_ov = body.get("content") if isinstance(body.get("content"), str) else None
+                res = st.inspect_lsp_goals(pid, rel, line, col, content_override=content_ov)
+                self._send_json(HTTPStatus.OK, res)
+                return
+
+            if parsed.path == "/api/file":
+                pid = str(body.get("project_id", ""))
+                rel = str(body.get("path", ""))
+                content = str(body.get("content", ""))
+                allow_tcb = bool(body.get("allow_tcb", False))
+                res = st.save_project_file(pid, rel, content, allow_tcb=allow_tcb)
                 self._send_json(HTTPStatus.OK, res)
                 return
 

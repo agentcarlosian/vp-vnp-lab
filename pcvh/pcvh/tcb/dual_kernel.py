@@ -9,7 +9,7 @@ import pathlib
 import shutil
 import subprocess
 import time
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Sequence
 
 from ..config import SpecConfig
 
@@ -83,6 +83,7 @@ def run_dual_kernel_verification(
     lake_exe: pathlib.Path,
     env: Dict[str, str],
     require_dual_kernel: bool = False,
+    target_theorems: Optional[Sequence[str]] = None,
 ) -> DualKernelResult:
     """Replay compiled Solution proof terms through an independent second Lean 4 kernel (`nanoda`).
 
@@ -142,8 +143,15 @@ def run_dual_kernel_verification(
     # Path 2: Direct `lean4export` -> `nanoda` independent kernel replay
     if lean4export_bin and nanoda_bin:
         export_fp = workspace / ".pcvh_solution.export"
+        decl_names: List[str] = [
+            t if "." in t else f"{cfg.solution_module}.{t}"
+            for t in (target_theorems or [])
+        ]
+        exp_cmd = [str(lake_exe), "env", lean4export_bin, cfg.solution_module]
+        if decl_names:
+            exp_cmd.extend(["--", *decl_names])
         exp_proc = subprocess.run(
-            [str(lake_exe), "env", lean4export_bin, cfg.solution_module],
+            exp_cmd,
             cwd=str(workspace),
             env=run_env,
             capture_output=True,
@@ -165,8 +173,25 @@ def run_dual_kernel_verification(
         export_fp.write_text(exp_proc.stdout, encoding="utf-8")
         n_lines = exp_proc.stdout.count("\n")
 
+        nanoda_cfg_fp = workspace / ".pcvh_nanoda_config.json"
+        nanoda_cfg_payload: Dict[str, object] = {
+            "export_file_path": str(export_fp.resolve()),
+            "use_stdin": False,
+            "permitted_axioms": list(cfg.allowed_axioms),
+            "unpermitted_axiom_hard_error": True,
+            "num_threads": 2,
+            "nat_extension": True,
+            "string_extension": True,
+            "unknown_pp_declar_hard_error": True,
+            "print_success_message": True,
+            "print_axioms": True,
+        }
+        if decl_names:
+            nanoda_cfg_payload["pp_declars"] = decl_names
+        nanoda_cfg_fp.write_text(json.dumps(nanoda_cfg_payload, indent=2) + "\n", encoding="utf-8")
+
         nan_proc = subprocess.run(
-            [nanoda_bin, str(export_fp)],
+            [nanoda_bin, str(nanoda_cfg_fp)],
             cwd=str(workspace),
             env=run_env,
             capture_output=True,

@@ -133,14 +133,14 @@ def test_phase6_llm_providers_wire_protocols_anthropic_openai_ollama():
             reply_text = '["unfold f", "omega"]' if is_step else "```lean4\nomega\n```"
 
             if self.path == "/v1/messages":
-                assert hdrs.get("x-api-key") == "sk-ant-test"
+                assert hdrs.get("x-api-key") == "mock-anthropic-token"
                 assert hdrs.get("anthropic-version") == "2023-06-01"
                 resp = {
                     "content": [{"type": "text", "text": reply_text}],
                     "usage": {"input_tokens": 1000, "output_tokens": 200},
                 }
             elif self.path == "/v1/chat/completions":
-                assert hdrs.get("authorization") == "Bearer sk-openai-test"
+                assert hdrs.get("authorization") == "Bearer mock-openai-token"
                 resp = {
                     "choices": [{"message": {"content": reply_text}}],
                     "usage": {"prompt_tokens": 1000, "completion_tokens": 200},
@@ -175,14 +175,14 @@ def test_phase6_llm_providers_wire_protocols_anthropic_openai_ollama():
         )
 
         # Anthropic Messages API
-        ant = AnthropicLLMBackend(api_key="sk-ant-test", base_url=f"http://127.0.0.1:{port}/v1/messages")
+        ant = AnthropicLLMBackend(api_key="mock-anthropic-token", base_url=f"http://127.0.0.1:{port}/v1/messages")
         proof, cost = ant.propose_tactic_proof(ctx)
         assert proof == "omega" and cost > 0
         steps, scost = ant.propose_tactic_steps(ctx.theorem_signature, [], ctx.live_lsp_goals, "", k=3)
         assert steps == ["unfold f", "omega"] and scost > 0
 
         # OpenAI Chat Completions API
-        oai = OpenAILLMBackend(api_key="sk-openai-test", base_url=f"http://127.0.0.1:{port}/v1/chat/completions")
+        oai = OpenAILLMBackend(api_key="mock-openai-token", base_url=f"http://127.0.0.1:{port}/v1/chat/completions")
         proof2, cost2 = oai.propose_tactic_proof(ctx)
         assert proof2 == "omega" and cost2 > 0
         steps2, _ = oai.propose_tactic_steps(ctx.theorem_signature, [], ctx.live_lsp_goals, "", k=3)
@@ -434,11 +434,15 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
     th.start()
 
     try:
-        # 1. GET / serves standalone Studio Web UI HTML
+        # 1. GET / serves standalone Studio Web UI HTML, plus /showcase and /eval routes
         with _NO_PROXY_OPENER.open(f"{base}/", timeout=10) as resp:
             html = resp.read().decode("utf-8")
             assert resp.status == 200
             assert "PCVH Studio" in html and "$/lean/plainGoal" in html
+        with _NO_PROXY_OPENER.open(f"{base}/showcase", timeout=10) as resp:
+            assert resp.status == 200 and b"Eight Machine-Checked Engineering Specifications" in resp.read()
+        with _NO_PROXY_OPENER.open(f"{base}/eval", timeout=10) as resp:
+            assert resp.status == 200 and b"40-Invariant" in resp.read()
 
         # 2. POST /api/init scaffolds a new project inside workspace root
         code, init_res = _http_json(
@@ -504,6 +508,32 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
         _, det_after = _http_json(f"{base}/api/project?id=demo_ledger")
         assert "target.py" in det_after["files"]
         assert any(k.startswith("Solution/Lem_") for k in det_after["files"])
+
+        # 9. Verify TCB file-save protection (`POST /api/file`) + live unsaved buffer LSP check
+        code_tcb_blocked, _ = _http_json(
+            f"{base}/api/file",
+            {"project_id": "demo_ledger", "path": "Specs/LedgerCore/Challenge.lean", "content": "-- blocked"},
+        )
+        assert code_tcb_blocked == 400
+
+        unsaved_lean = det_after["files"]["Specs/LedgerCore/Challenge.lean"].replace("by sorry", "by\n  sorry", 1)
+        code_buf, buf_lsp = _http_json(
+            f"{base}/api/lsp/goals",
+            {
+                "project_id": "demo_ledger",
+                "rel_file": "Specs/LedgerCore/Challenge.lean",
+                "line": sorry_line + 1,
+                "col": 2,
+                "content": unsaved_lean,
+            },
+        )
+        assert code_buf == 200 and "goals" in buf_lsp
+
+        code_save_ok, save_res = _http_json(
+            f"{base}/api/file",
+            {"project_id": "demo_ledger", "path": "target.py", "content": det_after["files"]["target.py"]},
+        )
+        assert code_save_ok == 200 and save_res["ok"] is True
     finally:
         srv.shutdown()
         srv.server_close()

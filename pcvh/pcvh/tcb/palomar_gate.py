@@ -411,6 +411,7 @@ def run_palomar_gate(
             lake_exe=lake_exe,
             env=env,
             require_dual_kernel=enforce_dk,
+            target_theorems=verified_theorems,
         )
         raw_logs["external_second_kernel"] = dk_res.raw_output
         if dk_res.status == "PASS":

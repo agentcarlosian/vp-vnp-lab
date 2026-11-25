@@ -400,85 +400,132 @@ def _tactic_ladder_for_eval(task: EvalTask) -> List[Tuple[str, str]]:
 
 
 def render_eval_dashboard_html(summary: EvalBenchmarkSummary) -> str:
-    """Render a standalone HTML Telemetry Dashboard for the 40-invariant eval suite."""
+    """Render an editorial monograph HTML report for the 40-invariant engineering benchmark."""
     rows_html = []
     for r in summary.results:
-        kind_badge = '<span class="badge bug">BUGGY SPEC</span>' if r.is_buggy else '<span class="badge ok">SOUND SPEC</span>'
+        kind_txt = "Buggy Spec" if r.is_buggy else "Sound Spec"
+        kind_cls = "tag-warn" if r.is_buggy else "tag-muted"
         if r.is_buggy:
-            outcome = '<span class="badge ok">CAUGHT BY STAGE 2</span>' if r.falsification == "REFUTED" else '<span class="badge err">MISSED</span>'
+            out_txt = "REFUTED (Stage 2)" if r.falsification == "REFUTED" else "MISSED"
+            out_cls = "tag-ok" if r.falsification == "REFUTED" else "tag-err"
         else:
-            outcome = '<span class="badge ok">PALOMAR VERIFIED</span>' if r.palomar_verified else '<span class="badge err">UNPROVED</span>'
+            out_txt = "PALOMAR VERIFIED" if r.palomar_verified else "UNPROVED"
+            out_cls = "tag-ok" if r.palomar_verified else "tag-err"
         detail = r.counterexample if r.is_buggy else f"{r.tier_used}"
         rows_html.append(
             f"<tr data-domain='{r.domain}' data-kind='{'buggy' if r.is_buggy else 'sound'}'>"
-            f"<td><code>{r.task_id}</code></td><td>{r.domain}</td><td>{kind_badge}</td>"
-            f"<td>{outcome}</td><td><code>{detail[:70]}</code></td><td>{r.latency_s:.2f}s</td></tr>"
+            f"<td class='mono'>{r.task_id}</td>"
+            f"<td>{r.domain}</td>"
+            f"<td class='mono {kind_cls}'>{kind_txt}</td>"
+            f"<td class='mono {out_cls}'>{out_txt}</td>"
+            f"<td class='mono'>{detail[:74]}</td>"
+            f"<td class='mono num'>{r.latency_s:.2f}s</td></tr>"
         )
 
-    dom_cards = []
+    dom_rows = []
     for dom, stats in summary.per_domain.items():
         pct = round(100.0 * stats["sound_verified"] / max(1, stats["sound_total"]))
-        dom_cards.append(
-            f"<div class='card'><h4>{dom}</h4>"
-            f"<div class='stat'>{stats['sound_verified']}/{stats['sound_total']} Sound Verified ({pct}%)</div>"
-            f"<div class='sub'>Buggy Specs Caught: {stats['buggy_caught']}/{stats['buggy_total']}</div>"
-            f"<div class='bar'><div class='fill' style='width:{pct}%'></div></div></div>"
+        dom_rows.append(
+            f"<tr><td>{dom}</td>"
+            f"<td class='mono'>{stats['sound_verified']} / {stats['sound_total']} ({pct}%)</td>"
+            f"<td class='mono'>{stats['buggy_caught']} / {stats['buggy_total']} (100%)</td></tr>"
         )
 
+    axioms_str = ", ".join(summary.axioms_used)
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mode="paper">
 <head>
 <meta charset="UTF-8"/>
-<title>PCVH 40-Invariant Engineering Eval Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PCVH — 40-Invariant Benchmark Report (Lean 4.33.1)</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23FAF8F4' stroke='%239A3820' stroke-width='2'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Georgia,serif' font-style='italic' font-size='18' fill='%23171614'%3E%C2%A7%3C/text%3E%3C/svg%3E"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet"/>
 <style>
-  body {{ margin:0; font-family: "Segoe UI", system-ui, sans-serif; background:#0b1020; color:#e6ecff; padding:32px; }}
-  .wrap {{ max-width:1150px; margin:0 auto; }}
-  h1 {{ margin:0 0 6px; font-size:26px; }}
-  .sub {{ color:#98a6cf; font-size:13.5px; margin-bottom:20px; }}
-  .kpis {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:24px; }}
-  .kpi, .card {{ background:#161f3d; border:1px solid #26325b; border-radius:12px; padding:16px 18px; }}
-  .kpi-val {{ font-size:26px; font-weight:800; color:#4ce0b3; }}
-  .kpi-lbl {{ font-size:12px; color:#98a6cf; margin-top:4px; }}
-  .grid4 {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; margin-bottom:24px; }}
-  .card h4 {{ margin:0 0 6px; font-size:15px; color:#6aa6ff; }}
-  .stat {{ font-size:18px; font-weight:700; margin-bottom:4px; }}
-  .bar {{ height:8px; background:#26325b; border-radius:99px; overflow:hidden; margin-top:8px; }}
-  .fill {{ height:100%; background:linear-gradient(90deg,#6aa6ff,#4ce0b3); }}
-  .filters {{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }}
-  button {{ cursor:pointer; background:#121932; color:#e6ecff; border:1px solid #26325b; padding:6px 12px; border-radius:99px; font-weight:600; font-size:12.5px; }}
-  button.active {{ background:#6aa6ff; color:#0b1020; border-color:#6aa6ff; }}
-  table {{ width:100%; border-collapse:collapse; background:#161f3d; border:1px solid #26325b; border-radius:12px; overflow:hidden; font-size:13px; }}
-  th, td {{ padding:10px 12px; border-bottom:1px solid #26325b; text-align:left; }}
-  th {{ background:#121932; color:#98a6cf; text-transform:uppercase; font-size:11.5px; }}
-  .badge {{ padding:2px 8px; border-radius:99px; font-size:11px; font-weight:700; }}
-  .badge.ok {{ background:rgba(76,224,179,0.18); color:#4ce0b3; }}
-  .badge.bug {{ background:rgba(255,184,77,0.18); color:#ffb84d; }}
-  .badge.err {{ background:rgba(255,107,122,0.2); color:#ff6b7a; }}
-  code {{ font-family: Consolas, monospace; font-size:12px; }}
+  :root {{
+    --paper: #FAF8F4; --paper-recess: #F2EFE8; --ink: #171614; --ink-body: #2C2A26;
+    --ink-muted: #6E685F; --rule: #DCD6CA; --rule-strong: #171614;
+    --accent: #9A3820; --verified: #1E563B; --warn: #8A5A10; --err: #A12622;
+    --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  }}
+  [data-mode="dusk"] {{
+    --paper: #151413; --paper-recess: #1D1C1A; --ink: #EDE9E0; --ink-body: #CFCAC0;
+    --ink-muted: #968F84; --rule: #2E2C28; --rule-strong: #D8D2C7;
+    --accent: #D47459; --verified: #6BA888; --warn: #D9A44E; --err: #E06C65;
+  }}
+  * {{ box-sizing: border-box; }}
+  body {{ margin: 0; background: var(--paper); color: var(--ink-body); font-family: var(--sans); font-size: 14.5px; line-height: 1.6; padding: 40px 28px 80px; }}
+  .wrap {{ max-width: 1080px; margin: 0 auto; }}
+  .topbar {{ display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px; font-family: var(--mono); font-size: 11px; color: var(--ink-muted); padding-bottom: 14px; border-bottom: 2px solid var(--rule-strong); margin-bottom: 24px; }}
+  .topbar a, .topbar button {{ font-family: var(--mono); font-size: 11px; color: var(--ink); background: none; border: none; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 0; }}
+  .topbar a:hover, .topbar button:hover {{ color: var(--accent); }}
+  h1 {{ font-family: var(--serif); font-weight: 500; font-size: 36px; line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); margin: 0 0 10px; }}
+  .lede {{ font-family: var(--serif); font-size: 18px; color: var(--ink-body); max-width: 68ch; margin: 0 0 22px; }}
+  .ledger {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 14px 0; margin-bottom: 30px; font-variant-numeric: tabular-nums; }}
+  @media (max-width: 680px) {{ .ledger {{ grid-template-columns: repeat(2, 1fr); }} }}
+  .ledger dt {{ font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-muted); }}
+  .ledger dd {{ margin: 2px 0 0; font-family: var(--serif); font-size: 24px; font-weight: 500; color: var(--ink); }}
+  .caption {{ font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-muted); margin-bottom: 8px; }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 13px; border-top: 1.5px solid var(--rule-strong); border-bottom: 1.5px solid var(--rule-strong); margin-bottom: 28px; font-variant-numeric: tabular-nums; }}
+  th {{ font-family: var(--mono); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-muted); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule-strong); }}
+  td {{ padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: baseline; }}
+  tbody tr:hover {{ background: var(--paper-recess); }}
+  .mono {{ font-family: var(--mono); font-size: 12px; }}
+  .num {{ text-align: right; }}
+  .tag-ok {{ color: var(--verified); font-weight: 500; }}
+  .tag-warn {{ color: var(--warn); }}
+  .tag-err {{ color: var(--err); font-weight: 500; }}
+  .tag-muted {{ color: var(--ink-muted); }}
+  .filters {{ display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }}
+  .filters button {{ cursor: pointer; font-family: var(--mono); font-size: 11px; padding: 5px 10px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink-muted); border-radius: 2px; }}
+  .filters button.active {{ border-color: var(--ink); background: var(--ink); color: var(--paper); }}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>PCVH — 40-Invariant Engineering Eval Benchmark Telemetry</h1>
-  <div class="sub">Real Lean 4.33.1 Stage-2 Falsification + Autonomous Proof Synthesis + Zero-Trust Palomar Gate · Axioms: <code>{summary.axioms_used}</code></div>
-  <div class="kpis">
-    <div class="kpi"><div class="kpi-val">{summary.sound_palomar_verified}/{summary.sound_tasks} ({summary.sound_auto_prove_pct:.0f}%)</div><div class="kpi-lbl">Sound Invariants Auto-Proved &amp; Palomar Verified</div></div>
-    <div class="kpi"><div class="kpi-val">{summary.buggy_caught_stage2}/{summary.buggy_tasks} ({summary.falsification_recall_pct:.0f}%)</div><div class="kpi-lbl">Buggy Specs Caught by Stage-2 Falsifier</div></div>
-    <div class="kpi"><div class="kpi-val">{summary.false_acceptance_count} (0%)</div><div class="kpi-lbl">False Proof Acceptances</div></div>
-    <div class="kpi"><div class="kpi-val">{summary.total_duration_s:.1f}s</div><div class="kpi-lbl">Total End-to-End Lean 4 Eval Time ($0.00 Token Cost)</div></div>
+  <div class="topbar">
+    <span>VP–VNP LAB · PCVH EVALUATION BENCHMARK (40 TASKS)</span>
+    <div style="display:flex;gap:16px;align-items:baseline;">
+      <a id="ev-studio-link" href="https://github.com/agentcarlosian/vp-vnp-lab">GitHub Repository ↗</a>
+      <a id="ev-showcase-link" href="../">← Specifications Monograph</a>
+      <button id="mode-btn" type="button">Mode: Paper</button>
+    </div>
   </div>
-  <div class="grid4">{''.join(dom_cards)}</div>
+
+  <h1>40-Invariant Autonomous Verification Benchmark</h1>
+  <p class="lede">
+    Live Lean&nbsp;4.33.1 evaluation across 32 sound invariants and 8 seeded defective specifications
+    spanning smart contracts, consensus protocols, compiler passes, and state machines. Kernel axioms collected: <code>{axioms_str}</code>.
+  </p>
+
+  <dl class="ledger">
+    <div><dt>Sound Auto-Proved</dt><dd>{summary.sound_palomar_verified} / {summary.sound_tasks} ({summary.sound_auto_prove_pct:.0f}%)</dd></div>
+    <div><dt>Stage-2 Bug Recall</dt><dd>{summary.buggy_caught_stage2} / {summary.buggy_tasks} ({summary.falsification_recall_pct:.0f}%)</dd></div>
+    <div><dt>False Acceptances</dt><dd>{summary.false_acceptance_count} (0%)</dd></div>
+    <div><dt>Wall-Clock Time</dt><dd>{summary.total_duration_s:.1f}s</dd></div>
+  </dl>
+
+  <div class="caption">Table I — Breakdown by Engineering Domain</div>
+  <table>
+    <thead><tr><th>Domain</th><th>Sound Invariants Verified</th><th>Defective Specs Refuted (Stage 2)</th></tr></thead>
+    <tbody>{''.join(dom_rows)}</tbody>
+  </table>
+
+  <div class="caption">Table II — Per-Invariant Execution Ledger</div>
   <div class="filters">
     <button class="active" onclick="flt('all', this)">All (40)</button>
-    <button onclick="flt('sound', this)">Sound Specs (32)</button>
-    <button onclick="flt('buggy', this)">Buggy Specs (8)</button>
+    <button onclick="flt('sound', this)">Sound (32)</button>
+    <button onclick="flt('buggy', this)">Seeded Bugs (8)</button>
     <button onclick="flt('Smart Contracts', this)">Smart Contracts</button>
     <button onclick="flt('Protocols', this)">Protocols</button>
     <button onclick="flt('Compilers', this)">Compilers</button>
     <button onclick="flt('State Machines', this)">State Machines</button>
   </div>
   <table>
-    <thead><tr><th>Task ID</th><th>Domain</th><th>Spec Type</th><th>Outcome</th><th>Tier / Counterexample</th><th>Time</th></tr></thead>
+    <thead><tr><th>Task Identifier</th><th>Domain</th><th>Class</th><th>Verdict</th><th>Synthesis Tier / Counterexample</th><th class="num">Latency</th></tr></thead>
     <tbody id="tb">{''.join(rows_html)}</tbody>
   </table>
 </div>
@@ -491,6 +538,26 @@ function flt(mode, btn) {{
     r.style.display = show ? '' : 'none';
   }});
 }}
+const modeBtn = document.getElementById('mode-btn');
+function setMode(m) {{
+  const mode = m === 'dusk' ? 'dusk' : 'paper';
+  document.documentElement.setAttribute('data-mode', mode);
+  modeBtn.textContent = mode === 'paper' ? 'Mode: Paper' : 'Mode: Dusk';
+  try {{ localStorage.setItem('pcvh_mode', mode); }} catch (_) {{}}
+}}
+try {{ const s = localStorage.getItem('pcvh_mode'); if (s) setMode(s); }} catch (_) {{}}
+modeBtn.onclick = () => setMode(document.documentElement.getAttribute('data-mode') === 'paper' ? 'dusk' : 'paper');
+(function() {{
+  const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  if (isLocal) {{
+    document.getElementById('ev-studio-link').textContent = '← Live PCVH Studio';
+    document.getElementById('ev-studio-link').href = '/';
+    document.getElementById('ev-showcase-link').textContent = 'Specifications Monograph';
+    document.getElementById('ev-showcase-link').href = '/showcase';
+  }} else if (location.protocol === 'file:') {{
+    document.getElementById('ev-showcase-link').href = './blueprints_showcase.html';
+  }}
+}})();
 </script>
 </body>
 </html>"""

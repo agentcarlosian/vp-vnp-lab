@@ -1,0 +1,12 @@
+{
+  "schema": "pcvh.spec-lock.v1",
+  "name": "blueprint06-ai-agent-capability-guard",
+  "pinned_at": "2026-11-24T23:41:06.982875+00:00",
+  "spec_bundle_sha256": "9be7c84b57ac1cb694b90f927b16a8de0950e97cb0ef54f820591542c387e4a9",
+  "files": {
+    "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
+    "Specs/AgentGuard/Statement.lean": "76f92ea5f4ff7fa2e3e5e27e096510cb9c78966ffb17e08184326bbc3438ebee",
+    "Specs/AgentGuard/Challenge.lean": "7c18a3d9207daccc8ae7f071313ea0b8568565bd8bb7d3f95daea6b535b6ae94",
+    "lakefile.toml": "b9aecd693a660cbbfcec202381c888f8f2b0c59d1da874242c763e31379f36a6"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "pcvh.attestation.v1",
+  "timestamp_utc": "2026-11-25T00:11:25.377142+00:00",
+  "spec_name": "blueprint07-limit-orderbook-and-margin",
+  "verdict": "VERIFIED",
+  "spec_bundle_sha256": "5dc412dc1204211ec17b285161fbb1866dbbe9477837cd3b604bf800d8ca213b",
+  "toolchain": "leanprover/lean4:v4.33.1",
+  "verified_theorems": [
+    "margin_liquidation_exact_iff",
+    "match_conserves_order_quantities",
+    "match_respects_limit_prices",
+    "orderbook_seq_strictly_increasing",
+    "orderbook_spec_nonvacuous",
+    "settlement_conserves_total_quote"
+  ],
+  "axioms_used": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "checks": {
+    "tcb_manifest": "PASS",
+    "tcb_overlay": "PASS (4 immutable TCB files stamped)",
+    "static_audit": "PASS (1 files scanned)",
+    "lean_kernel_build": "PASS",
+    "palomar_comparator": "PASS (6 theorems DefEq, axioms=['Classical.choice', 'Quot.sound', 'propext'])",
+    "nonvacuity_witness": "PASS",
+    "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; Missing independent kernel tools: lean4export, nanoda_bin (enforced in Linux CI dual-kernel job))",
+    "differential_conformance": "PASS (1000/1000 Rust OrderBook+Margin differential traces matched bit-for-bit)"
+  },
+  "failure_reasons": [],
+  "duration_s": 19.028,
+  "attestation_sha256": "17d373c0714ce72f4ee29f38a5dffcb03d3df641f77b391fb74f2a0a80b82ed5"
+}

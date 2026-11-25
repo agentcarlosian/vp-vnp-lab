@@ -1,0 +1,15 @@
+# Normalize text files to LF across Windows and Linux CI so shell scripts and SHA-256 locks never drift
+* text=auto eol=lf
+*.sh text eol=lf
+*.lean text eol=lf
+*.py text eol=lf
+*.rs text eol=lf
+*.ts text eol=lf
+*.sol text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.yml text eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf

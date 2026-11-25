@@ -1,0 +1,8 @@
+{
+  "name": "pcvh-blueprint06-agent-guard",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "conformance": "node src/conformance_runner.ts"
+  }
+}

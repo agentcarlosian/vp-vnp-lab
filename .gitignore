@@ -23,7 +23,7 @@
 .pcvh_studio_keys/
 .keys/
 
-# Python caches & packaging artifacts
+# Python, Rust & Node caches / build artifacts
 **/__pycache__/
 *.py[cod]
 *$py.class
@@ -33,6 +33,8 @@
 venv/
 build/
 dist/
+**/target/
+**/node_modules/
 
 # OS & editor files
 .DS_Store

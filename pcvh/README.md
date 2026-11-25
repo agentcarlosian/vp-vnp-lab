@@ -2,7 +2,7 @@
 
 Zero-trust Palomar-style Spec → Proof agentic verification harness inspired by `anthropics/formal-math/vp-vnp`.
 
-## All 6 Phases Completed & Verified (36 / 36 Live Lean 4.33.1 Tests Passing)
+## All 6 Phases Completed & Verified (39 / 39 Live Lean 4.33.1 Tests Passing)
 
 ### Phase 1 — Zero-Trust Palomar Verification Gate (`pcvh/tcb/`)
 - [manifest.py](pcvh/tcb/manifest.py): SHA-256 TCB pinning (`spec.lock.json`) and immutable overlay workspace construction.
@@ -21,12 +21,15 @@ Zero-trust Palomar-style Spec → Proof agentic verification harness inspired by
 - [prover.py](pcvh/agents/prover.py): Deterministic tactic escalation (Tiers 0–2) + Tier-3 pluggable `LLMBackend` repair loop (`OpenAICompatibleLLMBackend`).
 - [orchestrator.py](pcvh/agents/orchestrator.py): Full 7-stage `pcvh prove` controller.
 
-### Phase 4 — Five Verified Production Engineering Blueprints (`blueprints/`)
+### Phase 4 — Eight Verified Production Engineering Blueprints (`blueprints/`)
 1. **Blueprint 1 (`blueprints/01_erc4626_vault/`)** — ERC-4626 Share Vault + Uniswap v2 AMM (6 theorems Palomar `VERIFIED` + `1000/1000` differential traces).
 2. **Blueprint 2 (`blueprints/02_bft_consensus/`)** — BFT Quorum-Intersection Consensus (`3f < n`) + Merkle Soundness/Completeness (5 theorems Palomar `VERIFIED` + `500/500` differential traces).
 3. **Blueprint 3 (`blueprints/03_ssa_peephole_opt/`)** — Arithmetic IR Peephole Optimizer (6 theorems **autonomously synthesized from scratch** by `pcvh prove`, Palomar `VERIFIED` + `500/500` AST differential traces).
 4. **Blueprint 4 (`blueprints/04_double_entry_ledger/`)** — Double-Entry Idempotent Payment Ledger (6 theorems Palomar `VERIFIED` + `1000/1000` differential traces).
 5. **Blueprint 5 (`blueprints/05_cat0_certificate/`)** — Primal-Dual CVXPY CAT(0) SOCP → Lean 4 Proof Certificate (4 theorems Palomar `VERIFIED`).
+6. **Blueprint 6 (`blueprints/06_agent_tool_guard/`)** — AI Agent Capability, Scope, Human-Approval & Budget Guardrail Proxy against **TypeScript (`src/agent_guard.ts`)** (7 theorems Palomar `VERIFIED` + `1000/1000` 12-step Node.js TS traces).
+7. **Blueprint 7 (`blueprints/07_orderbook_matching/`)** — Price-Time Priority Limit Order Book & Cross-Margin Engine against **Rust (`Cargo.toml` + `src/lib.rs`)** (6 theorems Palomar `VERIFIED` + `1000/1000` `cargo test`/`cargo run` traces).
+8. **Blueprint 8 (`blueprints/08_zk_and_replay_window/`)** — R1CS/Plonkish Zero-Knowledge Range/MUX Gadgets + 64-Packet WireGuard Anti-Replay Window (8 theorems Palomar `VERIFIED` + `1000/1000` 64-bit bitmask traces).
 
 ### Phase 5 — CI/CD Matrix, PR Diff-Aware Re-Proving & 40-Invariant Eval Benchmark (`pcvh/ci/`, `pcvh/eval/`)
 - [diff_reprove.py](pcvh/ci/diff_reprove.py): Transitive Statement-def + Challenge-signature hashing; re-proves only invalidated/new lemmas (`75%` cache hit verified).
