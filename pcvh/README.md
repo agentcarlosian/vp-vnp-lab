@@ -1,5 +1,21 @@
 # `pcvh` — Agentic Proof-Carrying Verification Harness (Complete Phases 1–6)
 
+## Verifying a candidate checkout
+
+Use a trusted installation of PCVH on the host. Build the verifier image from a reviewed copy of this directory. Run `pcvh pin` on a separate, reviewed reference project and record its full SHA-256 digest before accepting a candidate. Copy that v2 lock to the candidate as part of the public specification. The digest covers the verification configuration, Lean specification, build configuration and standard conformance bridge. Include additional trusted oracle scripts and imported specification files in `spec.extra_tcb_files`. Python callers can use `pcvh.tcb.isolated.verify_isolated` with the same image ID and digest.
+
+```sh
+docker build -f Dockerfile.verifier -t pcvh-verifier .
+reviewed_digest=$(python -m pcvh pin /path/to/reviewed-reference --json | python -c 'import json,sys; print(json.load(sys.stdin)["spec_bundle_sha256"])')
+image=$(docker image inspect pcvh-verifier --format '{{.Id}}')
+python -m pcvh verify /path/to/candidate --sandbox-image "$image" --expected-spec-sha256 "$reviewed_digest" --json
+```
+
+Supply a dedicated candidate source directory. The Linux worker receives read-only inputs, temporary build space, a fixed image toolchain and no network. Keep private material outside that directory. Save a report with `--attestation` to a verifier-owned path outside the candidate. An image for a project requiring a second kernel must also contain its configured independent verifier tools. The standard image includes Lean, Python, Node and Rust.
+
+`--trusted-local` runs native programs with your account's permissions. Use it for your own reviewed projects. Studio, proving, incremental repair and scaffolding are local authoring workflows for trusted workspaces. Existing v1 projects need a new pin made from reviewed sources. Historical attestations retain the digest from their original run.
+
+
 Zero-trust Palomar-style Spec → Proof agentic verification harness inspired by `anthropics/formal-math/vp-vnp`.
 
 ## All 6 Phases Completed & Verified (39 / 39 Live Lean 4.33.1 Tests Passing)
@@ -52,11 +68,11 @@ python -m pcvh prove my_rust_limiter --workers 2 --llm-provider auto
 
 # Verify existing blueprints + cryptographic Ed25519 DSSE signing
 python -m pcvh keygen --out-dir .keys
-python -m pcvh verify blueprints/01_erc4626_vault --sign-key .keys/pcvh_signing.key.pem
+python -m pcvh verify --trusted-local blueprints/01_erc4626_vault --sign-key .keys/pcvh_signing.key.pem
 python -m pcvh verify-sig blueprints/01_erc4626_vault/proof-attestation.json --pubkey .keys/pcvh_signing.pub.pem
 
 # Launch interactive PCVH Local Web Studio (http://127.0.0.1:8765)
-python -m pcvh studio --root .
+python -m pcvh studio --trusted-local --root .
 
 # Run full 36-test live Lean 4.33.1 test suite
 python -m pytest -v tests/

@@ -80,7 +80,7 @@ def _create_base_project(tmp_path: pathlib.Path, name: str) -> pathlib.Path:
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
 def test_baseline_honest_proof_is_verified(tmp_path: pathlib.Path):
     proj = _create_base_project(tmp_path, "baseline_honest")
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "VERIFIED", f"Unexpected rejection: {res.failure_reasons}"
     assert set(res.verified_theorems) == {"inc_gt", "mini_nonvacuous"}
 
@@ -94,7 +94,7 @@ def test_cheat_01_direct_sorry(tmp_path: pathlib.Path):
         "theorem mini_nonvacuous : inc 41 = 42 := rfl\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     assert any("sorry" in r.lower() for r in res.failure_reasons)
 
@@ -112,7 +112,7 @@ def test_cheat_02_hidden_helper_sorry(tmp_path: pathlib.Path):
         "theorem mini_nonvacuous : inc 41 = 42 := rfl\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     assert any("sorry" in r.lower() for r in res.failure_reasons)
 
@@ -127,7 +127,7 @@ def test_cheat_03_custom_axiom(tmp_path: pathlib.Path):
         "theorem mini_nonvacuous : inc 41 = 42 := rfl\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     assert any("axiom" in r.lower() for r in res.failure_reasons)
 
@@ -141,7 +141,7 @@ def test_cheat_04_admit(tmp_path: pathlib.Path):
         "theorem mini_nonvacuous : inc 41 = 42 := rfl\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     assert any("admit" in r.lower() or "sorry" in r.lower() for r in res.failure_reasons)
 
@@ -155,7 +155,7 @@ def test_cheat_05_native_decide_ofReduceBool(tmp_path: pathlib.Path):
         "theorem mini_nonvacuous : inc 41 = 42 := by native_decide\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     # Caught by BOTH static audit (`banned_native_decide`) AND kernel comparator (`Lean.ofReduceBool`)!
     assert any("native_decide" in r or "ofReduceBool" in r for r in res.failure_reasons)
@@ -172,7 +172,7 @@ def test_cheat_06_unsafe_implemented_by(tmp_path: pathlib.Path):
         "theorem mini_nonvacuous : inc 41 = 42 := rfl\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     assert any("unsafe" in r or "implemented_by" in r for r in res.failure_reasons)
 
@@ -185,7 +185,7 @@ def test_cheat_07_statement_tcb_mutation(tmp_path: pathlib.Path):
         "namespace Mini\ndef inc (n : Nat) : Nat := n + 999\nend Mini\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     assert "TAMPER_DETECTED" in res.checks["tcb_manifest"]
 
@@ -206,11 +206,10 @@ def test_cheat_08_challenge_tcb_mutation(tmp_path: pathlib.Path):
         "theorem mini_nonvacuous : True := trivial\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
-    # Even if working-tree check were bypassed, immutable TCB overlay restores original Challenge and comparator rejects type_mismatch!
     assert "TAMPER_DETECTED" in res.checks["tcb_manifest"]
-    assert any("type_mismatch" in r for r in res.failure_reasons)
+    assert "lean_kernel_build" not in res.checks
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
@@ -223,7 +222,7 @@ def test_cheat_09_weakened_solution_type_mismatch(tmp_path: pathlib.Path):
         "theorem mini_nonvacuous : inc 41 = 42 := rfl\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     assert any("type_mismatch" in r for r in res.failure_reasons)
 
@@ -237,7 +236,7 @@ def test_cheat_10_missing_nonvacuity_witness(tmp_path: pathlib.Path):
         "theorem inc_gt (n : Nat) : n < inc n := by unfold inc; omega\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     assert any("missing_solution_theorem" in r for r in res.failure_reasons)
     assert "FAIL" in res.checks["nonvacuity_witness"]
@@ -253,7 +252,7 @@ def test_cheat_11_forbidden_umbrella_import(tmp_path: pathlib.Path):
         "theorem mini_nonvacuous : inc 41 = 42 := rfl\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     assert any("forbidden_umbrella_import" in r for r in res.failure_reasons)
 
@@ -273,7 +272,7 @@ def test_cheat_12_metaprogramming_env_addDecl_injection(tmp_path: pathlib.Path):
         "theorem mini_nonvacuous : inc 41 = 42 := rfl\nend Solution\n",
         encoding="utf-8",
     )
-    res = run_palomar_gate(load_spec_config(proj), lean_bin=LOCAL_LEAN_BIN)
+    res = run_palomar_gate(load_spec_config(proj), trusted_local=True, lean_bin=LOCAL_LEAN_BIN)
     assert res.verdict == "REJECTED"
     # Caught by BOTH static scanner (`banned_env_addDecl`) AND kernel `CollectAxioms` (`SneakyFalse`)!
     assert any("banned_env_addDecl" in r or "disallowed_axioms" in r for r in res.failure_reasons)

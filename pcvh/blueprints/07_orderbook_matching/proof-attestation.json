@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-25T00:11:25.377142+00:00",
+  "timestamp_utc": "2026-11-25T03:05:36.946454+00:00",
   "spec_name": "blueprint07-limit-orderbook-and-margin",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "5dc412dc1204211ec17b285161fbb1866dbbe9477837cd3b604bf800d8ca213b",
+  "spec_bundle_sha256": "2f5d3e775496f4e1a24cf5ef84d6ad7b348a13b994eb6b3d30715132a4569cbc",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "margin_liquidation_exact_iff",
@@ -20,7 +20,7 @@
   ],
   "checks": {
     "tcb_manifest": "PASS",
-    "tcb_overlay": "PASS (4 immutable TCB files stamped)",
+    "tcb_overlay": "PASS (0 immutable TCB files stamped)",
     "static_audit": "PASS (1 files scanned)",
     "lean_kernel_build": "PASS",
     "palomar_comparator": "PASS (6 theorems DefEq, axioms=['Classical.choice', 'Quot.sound', 'propext'])",
@@ -29,6 +29,6 @@
     "differential_conformance": "PASS (1000/1000 Rust OrderBook+Margin differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 19.028,
-  "attestation_sha256": "17d373c0714ce72f4ee29f38a5dffcb03d3df641f77b391fb74f2a0a80b82ed5"
+  "duration_s": 18.681,
+  "attestation_sha256": "8b315c07bd436a7554fcbdb0841038585fa273e367f2b6bbbd3e795b201badb7"
 }

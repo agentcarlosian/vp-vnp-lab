@@ -769,7 +769,7 @@ def run_eval_benchmark_40(
         # 4. Run REAL Zero-Trust Palomar Verification Gate over ALL proved tasks together!
         cfg = load_spec_config(ws)
         pin_tcb_manifest(cfg, save_snapshot=True)
-        gate_res = run_palomar_gate(cfg, lean_bin=lean_bin_dir, run_conformance=False)
+        gate_res = run_palomar_gate(cfg, trusted_local=True, lean_bin=lean_bin_dir, run_conformance=False)
         verified_set = set(gate_res.verified_theorems) if gate_res.verdict == "VERIFIED" else set()
 
     # Aggregate telemetry

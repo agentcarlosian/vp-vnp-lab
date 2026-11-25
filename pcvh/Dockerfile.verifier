@@ -1,0 +1,17 @@
+FROM node:24-bookworm-slim AS node
+FROM rust:1-bookworm AS rust
+
+FROM python:3.13-slim-bookworm
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl zstd build-essential git libgmp10 libatomic1 && rm -rf /var/lib/apt/lists/*
+RUN set -eu; case "$TARGETARCH" in amd64) platform=linux ;; arm64) platform=linux_aarch64 ;; *) exit 1 ;; esac; \
+    mkdir -p /opt/lean; \
+    curl -fsSL --retry 3 "https://github.com/leanprover/lean4/releases/download/v4.33.1/lean-4.33.1-${platform}.tar.zst" -o /tmp/lean.tar.zst; \
+    tar --zstd -xf /tmp/lean.tar.zst -C /opt/lean --strip-components=1; rm /tmp/lean.tar.zst
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=rust /usr/local/cargo/bin /usr/local/cargo/bin
+COPY --from=rust /usr/local/rustup /usr/local/rustup
+ENV PATH="/opt/lean/bin:/usr/local/cargo/bin:${PATH}" RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/tmp/cargo
+COPY pyproject.toml README.md /opt/pcvh/
+COPY pcvh /opt/pcvh/pcvh
+RUN python -m pip install --no-cache-dir '/opt/pcvh[crypto]' && /opt/lean/bin/lake --version

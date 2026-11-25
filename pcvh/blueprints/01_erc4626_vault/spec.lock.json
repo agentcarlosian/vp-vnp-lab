@@ -1,12 +1,14 @@
 {
-  "schema": "pcvh.spec-lock.v1",
+  "schema": "pcvh.spec-lock.v2",
   "name": "blueprint01-erc4626-vault-amm",
-  "pinned_at": "2026-11-24T17:45:58.164983+00:00",
-  "spec_bundle_sha256": "24e639104be60a40d0d14e7f436ef078b7e08772404eb3b2dba63cf82854be61",
+  "pinned_at": "2026-11-25T02:48:14.581040+00:00",
+  "spec_bundle_sha256": "606ead86b2418b16bf8d37be64b21b10b3dc3d563571a7781bec5681ebc4abbf",
   "files": {
+    "pcvh.toml": "2bed14d8d2d7f15f15cda5aeb53f833cd5f368ef0b416af9498c9ef8d9dc56f0",
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
     "Specs/Vault/Statement.lean": "67488f0ab6f2619a7f51c3d311662ac2525019964851cbde3a409c4bf86fc83a",
     "Specs/Vault/Challenge.lean": "402cb0f3dab6abc560ab4faccb29d531cd66954fd780a83933c652bb7678d30a",
-    "lakefile.toml": "2ce0ddbb77c65f3a085a40440e4747de8a1d138cc27126935cabbed0d41c1ca0"
+    "lakefile.toml": "2ce0ddbb77c65f3a085a40440e4747de8a1d138cc27126935cabbed0d41c1ca0",
+    "conformance_fuzz.py": "27a0557e9ad368a26ece9e4936fcfe6ec7320b05e15664562055e7fc97bfea8e"
   }
 }

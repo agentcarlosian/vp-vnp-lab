@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-24T17:46:21.569007+00:00",
+  "timestamp_utc": "2026-11-25T03:04:35.862281+00:00",
   "spec_name": "blueprint03-ast-peephole-optimizer",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "0df2945d02ae8870fcc4d0b116ed550ea1b02f56080c5f90e90639f6f20c4344",
+  "spec_bundle_sha256": "a9d1dd8d2edc0467b6fd20ba43a90204c5eadf6e3561e9e59e773f3f2b6edc45",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "iropt_spec_nonvacuous",
@@ -19,8 +19,8 @@
   ],
   "checks": {
     "tcb_manifest": "PASS",
-    "tcb_overlay": "PASS (5 immutable TCB files stamped)",
-    "static_audit": "PASS (8 files scanned)",
+    "tcb_overlay": "PASS (0 immutable TCB files stamped)",
+    "static_audit": "PASS (7 files scanned)",
     "lean_kernel_build": "PASS",
     "palomar_comparator": "PASS (6 theorems DefEq, axioms=['Quot.sound', 'propext'])",
     "nonvacuity_witness": "PASS",
@@ -28,6 +28,6 @@
     "differential_conformance": "PASS (500/500 IR Peephole AST differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 9.945,
-  "attestation_sha256": "9906fe10cecd581e9baf04c7d3cf4dc72d3a1aed1882d7000a0715dd7428608b"
+  "duration_s": 19.905,
+  "attestation_sha256": "33bc4484fdd56375e8e68c9e3fed04989fd93e8f272f27e297b03f1e1989f2ec"
 }

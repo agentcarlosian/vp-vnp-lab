@@ -425,10 +425,10 @@ class StudioState:
                 elif action == "verify":
                     att_fp = proj_dir / "proof-attestation.json"
                     res = run_palomar_gate(
-                        cfg,
+                        cfg, trusted_local=True,
                         lean_bin=self.lean_bin,
                         run_conformance=not bool(opts.get("skip_conformance", False)),
-                        require_dual_kernel=bool(opts.get("require_dual_kernel", False)),
+                        require_dual_kernel=True if opts.get("require_dual_kernel") else None,
                         attestation_out=att_fp,
                     )
                     for chk_k, chk_v in res.checks.items():

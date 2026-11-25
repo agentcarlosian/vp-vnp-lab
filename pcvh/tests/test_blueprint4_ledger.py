@@ -28,7 +28,7 @@ def test_blueprint4_full_palomar_gate_and_differential_conformance():
     att_path = BLUEPRINT4_DIR / "proof-attestation.json"
 
     res = run_palomar_gate(
-        cfg,
+        cfg, trusted_local=True,
         lean_bin=LOCAL_LEAN_BIN,
         run_conformance=True,
         attestation_out=att_path,

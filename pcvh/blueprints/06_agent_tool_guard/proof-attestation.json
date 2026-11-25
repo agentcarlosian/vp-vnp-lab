@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-25T00:11:06.345773+00:00",
+  "timestamp_utc": "2026-11-25T03:05:18.262096+00:00",
   "spec_name": "blueprint06-ai-agent-capability-guard",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "9be7c84b57ac1cb694b90f927b16a8de0950e97cb0ef54f820591542c387e4a9",
+  "spec_bundle_sha256": "8598acf9fc0050cc0478a19b412d58c003fa7c3f5d68cbe90e10bfb3b509b79d",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "agent_guard_spec_nonvacuous",
@@ -20,7 +20,7 @@
   ],
   "checks": {
     "tcb_manifest": "PASS",
-    "tcb_overlay": "PASS (4 immutable TCB files stamped)",
+    "tcb_overlay": "PASS (0 immutable TCB files stamped)",
     "static_audit": "PASS (1 files scanned)",
     "lean_kernel_build": "PASS",
     "palomar_comparator": "PASS (7 theorems DefEq, axioms=['Quot.sound', 'propext'])",
@@ -29,6 +29,6 @@
     "differential_conformance": "PASS (1000/1000 TypeScript AI Agent Guardrail 12-step traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 15.617,
-  "attestation_sha256": "97e3e1ac7d420080de3588d1223df503fd2ecfbd08a185cbe84a08cbe3d8fe4d"
+  "duration_s": 15.623,
+  "attestation_sha256": "8c2d70ab81caacb8ef59642b720879db59b1f2b990d74cc45c6991525ca58227"
 }

@@ -1,0 +1,7 @@
+*
+!Dockerfile.verifier
+!pyproject.toml
+!README.md
+!pcvh/
+!pcvh/**/*.py
+!pcvh/studio/ui.html

@@ -6,13 +6,36 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  isolated-verifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Check isolated verification against an independent pin
+        working-directory: pcvh
+        run: |
+          python -m pip install pytest cryptography
+          docker build -f Dockerfile.verifier -t pcvh-verifier:test .
+          export PCVH_TEST_IMAGE=$(docker image inspect pcvh-verifier:test --format '{{.Id}}')
+          python -m pytest -q tests/test_verification_boundary.py
+
   lean-orch-and-qcat0:
     name: lean-build-orchestrator & quantum-cat0-checker
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install elan & Lean 4.33.1
         run: |
@@ -32,7 +55,7 @@ jobs:
         working-directory: lean-build-orchestrator
         run: python -m pytest -v tests/test_lean_orch.py
 
-      - name: Test quantum-cat0-checker (13 CVXPY SOCP/SDP & Lean cert tests)
+      - name: Test quantum-cat0-checker (CVXPY, verdicts and Lean certificates)
         working-directory: quantum-cat0-checker
         run: python -m pytest -v tests/test_quantum_cat0.py
 
@@ -54,6 +77,8 @@ jobs:
           - 08_zk_and_replay_window
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install elan & Lean 4.33.1
         run: |
@@ -76,7 +101,7 @@ jobs:
       - name: Run Zero-Trust Palomar Verification Gate
         working-directory: pcvh
         run: |
-          python -m pcvh verify blueprints/${{ matrix.blueprint }} --attestation blueprints/${{ matrix.blueprint }}/proof-attestation.json
+          python -m pcvh verify --trusted-local blueprints/${{ matrix.blueprint }} --attestation blueprints/${{ matrix.blueprint }}/proof-attestation.json
 
       - name: Publish Step Summary Badge
         working-directory: pcvh
@@ -93,18 +118,20 @@ jobs:
           print(f"- Axioms: `{d['axioms_used']}`")
           PY
 
-      - name: Upload Signed Proof Attestation
+      - name: Upload proof attestation
         uses: actions/upload-artifact@v4
         with:
           name: attestation-${{ matrix.blueprint }}
           path: pcvh/blueprints/${{ matrix.blueprint }}/proof-attestation.json
 
   pcvh-full-suite:
-    name: "PCVH Full Suite (39 tests: Red-Team, LSP, Prover, CAT(0), Multi-Lang, Eval-40)"
+    name: "PCVH native suite (proof gate, LSP, prover, conformance and Eval-40)"
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install elan & Lean 4.33.1
         run: |
@@ -135,6 +162,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install elan & Lean 4.33.1
         run: |
@@ -165,16 +194,22 @@ jobs:
           bash scripts/setup_dual_kernel_ci.sh
           echo "$HOME/.cache/lean-ci-tools/bin" >> "$GITHUB_PATH"
 
-      - name: Verify blueprints under dual kernels + Ed25519 DSSE signing
+      - name: Verify blueprints under dual kernels
+        working-directory: pcvh
+        run: |
+          for bp in 01_erc4626_vault 02_bft_consensus 03_ssa_peephole_opt 04_double_entry_ledger 05_cat0_certificate 06_agent_tool_guard 07_orderbook_matching 08_zk_and_replay_window; do
+            echo "=== Dual-Kernel Verifying $bp ==="
+            python -m pcvh verify --trusted-local "blueprints/$bp" \
+              --require-dual-kernel \
+              --attestation "blueprints/$bp/proof-attestation.json"
+          done
+
+      - name: Sign attestations from the trusted main branch
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         working-directory: pcvh
         run: |
           python -m pcvh keygen --out-dir /tmp/pcvh-ci-keys
-          for bp in 01_erc4626_vault 02_bft_consensus 03_ssa_peephole_opt 04_double_entry_ledger 05_cat0_certificate 06_agent_tool_guard 07_orderbook_matching 08_zk_and_replay_window; do
-            echo "=== Dual-Kernel Verifying $bp ==="
-            python -m pcvh verify "blueprints/$bp" \
-              --require-dual-kernel \
-              --sign-key /tmp/pcvh-ci-keys/pcvh_signing.key.pem \
-              --attestation "blueprints/$bp/proof-attestation.json"
-            python -m pcvh verify-sig "blueprints/$bp/proof-attestation.json" \
-              --pubkey /tmp/pcvh-ci-keys/pcvh_signing.pub.pem
+          for att in blueprints/*/proof-attestation.json; do
+            python -m pcvh sign "$att" --key /tmp/pcvh-ci-keys/pcvh_signing.key.pem
+            python -m pcvh verify-sig "$att" --pubkey /tmp/pcvh-ci-keys/pcvh_signing.pub.pem
           done

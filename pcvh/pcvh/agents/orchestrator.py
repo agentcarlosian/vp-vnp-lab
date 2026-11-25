@@ -262,7 +262,7 @@ def run_autonomous_prove_pipeline(
     # Stage 7: Zero-Trust Palomar Verification Gate (Zone C)
     att_path = attestation_out or (cfg.project_root / "proof-attestation.json")
     gate_res = run_palomar_gate(
-        cfg,
+        cfg, trusted_local=True,
         lean_bin=lean_bin,
         run_conformance=True,
         attestation_out=att_path,

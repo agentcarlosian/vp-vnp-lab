@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-24T17:43:38.084861+00:00",
+  "timestamp_utc": "2026-11-25T03:05:02.636693+00:00",
   "spec_name": "blueprint05-cat0-socp-certificate",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "a2fc96a52fcb87e7bf21cdc1e700a8ff25019f1d2af206032d473f923b07c58c",
+  "spec_bundle_sha256": "ddfb763a27493cce4d729de931b8c4c22251dd6eca504e22088bfea870fa28b7",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "c4_crossing_cat0_bound",
@@ -17,14 +17,14 @@
   ],
   "checks": {
     "tcb_manifest": "PASS",
-    "tcb_overlay": "PASS (4 immutable TCB files stamped)",
-    "static_audit": "PASS (2 files scanned)",
+    "tcb_overlay": "PASS (0 immutable TCB files stamped)",
+    "static_audit": "PASS (1 files scanned)",
     "lean_kernel_build": "PASS",
     "palomar_comparator": "PASS (4 theorems DefEq, axioms=['Quot.sound', 'propext'])",
     "nonvacuity_witness": "PASS",
     "external_second_kernel": "SKIPPED_LOCAL (Lean 4.33.1 kernel comparator active; Missing independent kernel tools: lean4export, nanoda_bin (enforced in Linux CI dual-kernel job))"
   },
   "failure_reasons": [],
-  "duration_s": 4.447,
-  "attestation_sha256": "6c9bbfa9c3ea34f9ef5d63f7e91924493e12645af9ed9c180fb2ca8c82c49940"
+  "duration_s": 9.629,
+  "attestation_sha256": "c794feaf3d5d8534b839ee7afd98cdc07b4fc189c66552e796fb1bba2646209c"
 }

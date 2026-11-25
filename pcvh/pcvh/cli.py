@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import sys
 from typing import List, Optional
 
 from .adapters.scaffolder import SUPPORTED_LANGUAGES, SUPPORTED_TEMPLATES, scaffold_project
@@ -17,8 +18,9 @@ from .falsify.falsifier import run_falsification_precheck
 from .runtime.lean_diagnostics import LeanLSPClient
 from .studio.server import serve_studio
 from .tcb.crypto import generate_ed25519_keypair, sign_attestation_file, verify_attestation_file
+from .tcb.isolated import verify_isolated
 from .tcb.manifest import pin_tcb_manifest, verify_tcb_manifest
-from .tcb.palomar_gate import run_palomar_gate
+from .tcb.palomar_gate import run_palomar_gate, write_attestation
 from .tcb.static_audit import scan_untrusted_lean_files
 
 
@@ -39,7 +41,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         print(f"Files ({len(res.files_created)}):")
         for f in res.files_created:
             print(f"  - {f}")
-        print(f"\nNext steps:\n  python -m pcvh prove {args.dest}\n  python -m pcvh verify {args.dest}")
+        print(f"\nNext steps:\n  python -m pcvh prove {args.dest}\n  python -m pcvh verify --trusted-local {args.dest}")
     return 0
 
 
@@ -49,7 +51,7 @@ def cmd_pin(args: argparse.Namespace) -> int:
     if args.as_json:
         print(json.dumps(lock, indent=2))
     else:
-        print(f"[PINNED] {cfg.name} | bundle_sha256={lock['spec_bundle_sha256'][:16]}... | files={len(lock['files'])}")
+        print(f"[PINNED] {cfg.name} | bundle_sha256={lock['spec_bundle_sha256']} | files={len(lock['files'])}")
         for k, v in lock["files"].items():
             print(f"  - {k}: {v[:16]}...")
     return 0
@@ -106,10 +108,28 @@ def cmd_verify_sig(args: argparse.Namespace) -> int:
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
+    if not args.trusted_local:
+        try:
+            if args.lean_bin or args.sign_key or args.sign_key_id:
+                raise ValueError("Host toolchain and signing options apply to trusted local execution.")
+            if args.attestation and args.attestation.resolve().is_relative_to(args.project.resolve()):
+                raise ValueError("Choose an attestation output outside the candidate checkout.")
+            report = verify_isolated(args.project, image=args.sandbox_image, expected_digest=args.expected_spec_sha256,
+                                     conformance=not args.skip_conformance, dual_kernel=args.require_dual_kernel)
+            output = json.dumps(report, indent=2)
+            if args.attestation:
+                write_attestation(args.attestation, report)
+            print(output if args.as_json else f"{report['spec_name']}: {report['verdict']} {report['failure_reasons']}")
+            return 0 if report["verdict"] == "VERIFIED" else 1
+        except (OSError, ValueError) as exc:
+            print(f"Verification refused: {exc}", file=sys.stderr)
+            return 1
+    if args.sandbox_image:
+        raise ValueError("Choose either isolated or trusted local verification.")
     cfg = load_spec_config(args.project)
     att_path = args.attestation or (cfg.project_root / "proof-attestation.json")
     res = run_palomar_gate(
-        cfg,
+        cfg, trusted_local=True, expected_spec_sha256=args.expected_spec_sha256,
         lean_bin=args.lean_bin,
         run_conformance=not args.skip_conformance,
         require_dual_kernel=True if args.require_dual_kernel else None,
@@ -256,6 +276,9 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
 
 def cmd_studio(args: argparse.Namespace) -> int:
+    if not args.trusted_local:
+        print("Studio executes local authoring tools. Select a trusted workspace with --trusted-local.", file=sys.stderr)
+        return 1
     return serve_studio(
         args.root,
         host=args.host,
@@ -351,6 +374,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_ver.add_argument("project", type=pathlib.Path)
     p_ver.add_argument("--lean-bin", type=pathlib.Path, default=None)
     p_ver.add_argument("--attestation", type=pathlib.Path, default=None)
+    p_ver.add_argument("--expected-spec-sha256", help="Digest of the independently reviewed specification bundle")
+    p_ver.add_argument("--sandbox-image", help="Immutable local Docker verifier image ID")
+    p_ver.add_argument("--trusted-local", action="store_true", help="Allow native execution of a trusted project")
     p_ver.add_argument("--skip-conformance", action="store_true")
     p_ver.add_argument("--require-dual-kernel", action="store_true", help="Fail unless lean4export + nanoda replay succeeds")
     p_ver.add_argument("--sign-key", type=pathlib.Path, default=None, help="Ed25519 private key PEM to sign attestation")
@@ -365,6 +391,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_cat.set_defaults(func=cmd_cert_cat0)
 
     p_stu = sub.add_parser("studio", help="Launch interactive PCVH Local Web Studio UI")
+    p_stu.add_argument("--trusted-local", action="store_true", help="Authorize local execution for this Studio workspace")
     p_stu.add_argument("--root", type=pathlib.Path, default=pathlib.Path("."))
     p_stu.add_argument("--host", type=str, default="127.0.0.1")
     p_stu.add_argument("--port", type=int, default=8765)

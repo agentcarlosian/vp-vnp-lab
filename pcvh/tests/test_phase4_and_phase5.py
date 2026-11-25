@@ -27,7 +27,7 @@ def test_phase4_blueprint1_erc4626_vault_amm_verified():
     bp = PKG_ROOT / "blueprints" / "01_erc4626_vault"
     cfg = load_spec_config(bp)
     pin_tcb_manifest(cfg, save_snapshot=True)
-    res = run_palomar_gate(cfg, lean_bin=LOCAL_LEAN_BIN, run_conformance=True, attestation_out=bp / "proof-attestation.json")
+    res = run_palomar_gate(cfg, trusted_local=True, lean_bin=LOCAL_LEAN_BIN, run_conformance=True, attestation_out=bp / "proof-attestation.json")
     assert res.verdict == "VERIFIED", f"Blueprint 1 failed: {res.failure_reasons}"
     assert len(res.verified_theorems) == 6
     assert "1000/1000" in res.checks["differential_conformance"]
@@ -38,7 +38,7 @@ def test_phase4_blueprint2_bft_consensus_merkle_verified():
     bp = PKG_ROOT / "blueprints" / "02_bft_consensus"
     cfg = load_spec_config(bp)
     pin_tcb_manifest(cfg, save_snapshot=True)
-    res = run_palomar_gate(cfg, lean_bin=LOCAL_LEAN_BIN, run_conformance=True, attestation_out=bp / "proof-attestation.json")
+    res = run_palomar_gate(cfg, trusted_local=True, lean_bin=LOCAL_LEAN_BIN, run_conformance=True, attestation_out=bp / "proof-attestation.json")
     assert res.verdict == "VERIFIED", f"Blueprint 2 failed: {res.failure_reasons}"
     assert len(res.verified_theorems) == 5
     assert "500/500" in res.checks["differential_conformance"]
@@ -48,7 +48,7 @@ def test_phase4_blueprint2_bft_consensus_merkle_verified():
 def test_phase4_blueprint3_compiler_pass_with_ast_conformance_verified():
     bp = PKG_ROOT / "blueprints" / "03_ssa_peephole_opt"
     cfg = load_spec_config(bp)
-    res = run_palomar_gate(cfg, lean_bin=LOCAL_LEAN_BIN, run_conformance=True, attestation_out=bp / "proof-attestation.json")
+    res = run_palomar_gate(cfg, trusted_local=True, lean_bin=LOCAL_LEAN_BIN, run_conformance=True, attestation_out=bp / "proof-attestation.json")
     assert res.verdict == "VERIFIED", f"Blueprint 3 failed: {res.failure_reasons}"
     assert len(res.verified_theorems) == 6
     assert "500/500" in res.checks["differential_conformance"]
