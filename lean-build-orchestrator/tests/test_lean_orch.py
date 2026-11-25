@@ -76,7 +76,7 @@ def test_linux_overcommit_headroom_preserves_raw_counters(monkeypatch, policy, h
     monkeypatch.setattr(memory.sys, "platform", "linux")
     monkeypatch.setattr(memory.os.path, "exists", lambda path: path == "/proc/meminfo" or real_exists(path))
     monkeypatch.setattr(builtins, "open", lambda path, *a, **kw: io.StringIO(meminfo) if path == "/proc/meminfo" else real_open(path, *a, **kw))
-    monkeypatch.setattr(pathlib.Path, "read_text", lambda path, *a, **kw: policy if str(path) == "/proc/sys/vm/overcommit_memory" else real_read_text(path, *a, **kw))
+    monkeypatch.setattr(pathlib.Path, "read_text", lambda path, *a, **kw: policy if path.as_posix() == "/proc/sys/vm/overcommit_memory" else real_read_text(path, *a, **kw))
 
     snap = get_memory_snapshot()
     assert snap.commit_total_gb == 6.0
