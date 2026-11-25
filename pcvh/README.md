@@ -18,7 +18,9 @@ Supply a dedicated candidate source directory. The Linux worker receives read-on
 
 Zero-trust Palomar-style Spec → Proof agentic verification harness inspired by `anthropics/formal-math/vp-vnp`.
 
-## All 6 Phases Completed & Verified (39 / 39 Live Lean 4.33.1 Tests Passing)
+## Native and isolated verification
+
+The native suite and Docker integration run cover 48 tests in total, including Lean 4.33.1 proof checks.
 
 ### Phase 1 — Zero-Trust Palomar Verification Gate (`pcvh/tcb/`)
 - [manifest.py](pcvh/tcb/manifest.py): SHA-256 TCB pinning (`spec.lock.json`) and immutable overlay workspace construction.
