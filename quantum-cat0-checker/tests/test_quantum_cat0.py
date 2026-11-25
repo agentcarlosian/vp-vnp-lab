@@ -160,9 +160,9 @@ def test_grid3x3_strict_three_way_planar_grid_separation():
 
 
 def test_k23_classical_lp_gap_only_verdict():
-    """On K_{2,3}, classical Metric LP < 1 (0.75) while every CAT(0) spectral bound >= 1.0 (achieved by K_{1,3} star tree)."""
+    """On K_{2,3}, classical Metric LP < 1 (0.75) while the lowest sampled CAT(0) ratio is 1.0."""
     feas = check_slocc_feasibility(get_topology("K23_bipartite"))
-    assert feas.verdict == "CLASSICAL_LP_GAP_ONLY"
+    assert feas.verdict == "METRIC_LP_GAP"
     assert math.isclose(feas.min_cut_ratio, 1.0, rel_tol=1e-4)
     assert math.isclose(feas.metric_lp_ratio, 0.75, rel_tol=1e-4)
     assert math.isclose(feas.cat0_spectral_ratio, 1.0, abs_tol=1e-3)
@@ -186,6 +186,10 @@ def test_exact_rational_enflo_dual_certificates():
 
 def _find_lean_exe() -> pathlib.Path | None:
     exe = "lean.exe" if os.name == "nt" else "lean"
+    if os.environ.get("ELAN_HOME"):
+        installed = pathlib.Path(os.environ["ELAN_HOME"]) / "toolchains" / "leanprover--lean4---v4.33.1" / "bin" / exe
+        if installed.is_file():
+            return installed
     for anc in [PKG_ROOT, *PKG_ROOT.parents[:4], pathlib.Path.home()]:
         cand = anc / ".elan" / "toolchains" / "leanprover--lean4---v4.33.1" / "bin" / exe
         if cand.exists():
@@ -209,3 +213,31 @@ def test_exported_lean4_certificate_compiles_in_live_lean_kernel(tmp_path: pathl
         fp.write_text(lean_src, encoding="utf-8")
         proc = subprocess.run([str(lean_exe), "--json", str(fp)], capture_output=True, text=True)
         assert proc.returncode == 0, f"Lean kernel rejected exported {name} certificate:\n{proc.stdout}\n{proc.stderr}"
+
+def test_certificate_preserves_decimal_input_and_exports_the_same_bound(tmp_path):
+    path = tmp_path / "network.json"
+    path.write_text('{"num_parties":2,"source_eprs":[[0,1,1]],'
+                    '"target_eprs":[[0,1,0.000010000000000000001]]}')
+    net = QuantumNetwork.from_json_file(path)
+    expected = Fraction("0.000010000000000000001")
+    cert = extract_enflo_dual_certificate(net, max_denom=2)
+    assert cert.verified_exact and cert.exact_rho_enflo == expected
+    assert QuantumNetwork.from_dict(net.to_dict()).target_eprs == net.target_eprs
+    coefficient = expected.numerator
+    assert f"{coefficient} * u 0 1 ≤ {coefficient} * u 0 1 := by" in export_lean4_enflo_certificate(net, cert)
+
+
+def test_geometric_candidate_cannot_certify_impossibility(monkeypatch):
+    net = get_topology("K23_bipartite")
+    monkeypatch.setattr("quantum_cat0.solvers._search_cat0_candidates",
+                        lambda net, seeds: (0.9, seeds[0]))
+    result = check_slocc_feasibility(net, run_covering_analysis=False)
+    assert result.min_cut_ratio >= 1
+    assert result.verdict == "CAT0_CANDIDATE"
+    assert result.to_dict()["cat0_candidate_ratio"] == 0.9
+
+
+def test_two_party_singleton_cut_supplies_an_impossibility_witness():
+    net = QuantumNetwork("two", 2, {(0, 1): 1}, {(0, 1): 2})
+    result = check_slocc_feasibility(net, run_covering_analysis=False)
+    assert (result.verdict, result.min_cut_ratio, result.worst_cut_partition) == ("FORBIDDEN_BY_CUT", 0.5, [0])

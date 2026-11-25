@@ -66,15 +66,19 @@ class CoveringCapacityResult:
 @dataclass
 class SLOCCFeasibilityResult:
     network_name: str
-    verdict: str  # FORBIDDEN_BY_CUT | FORBIDDEN_BY_CAT0_SPECTRAL | CLASSICAL_LP_GAP_ONLY | FEASIBLE_UNDER_OUTER_BOUNDS
+    verdict: str  # FORBIDDEN_BY_CUT | CAT0_CANDIDATE | METRIC_LP_GAP | FEASIBLE_UNDER_OUTER_BOUNDS
     min_cut_ratio: float               # min_A cap(A) / demand(A); < 1 proves impossibility!
     worst_cut_partition: Optional[List[int]]
     metric_lp_ratio: float             # min_{d in M_n} sum s_e d_e / sum t_f d_f
-    cat0_spectral_ratio: float         # min_{d in CAT(0)} sum s_e d_e / sum t_f d_f
+    cat0_spectral_ratio: float         # lowest ratio observed among sampled four-point metrics
     covering_ebit_budget_cat0: Optional[float]
     covering_feasible_with_l2_cover: Optional[bool]
     witness_metric: Optional[np.ndarray] = None
     notes: List[str] = field(default_factory=list)
+
+    @property
+    def cat0_candidate_ratio(self) -> float:
+        return self.cat0_spectral_ratio
 
     def to_dict(self) -> Dict[str, object]:
         return {
@@ -83,7 +87,8 @@ class SLOCCFeasibilityResult:
             "min_cut_ratio": round(self.min_cut_ratio, 6),
             "worst_cut_partition": self.worst_cut_partition,
             "metric_lp_ratio": round(self.metric_lp_ratio, 6),
-            "cat0_spectral_ratio": round(self.cat0_spectral_ratio, 6),
+            "cat0_candidate_ratio": round(self.cat0_spectral_ratio, 6),
+            "cat0_spectral_ratio": round(self.cat0_spectral_ratio, 6),  # legacy key
             "covering_ebit_budget_cat0": (
                 round(self.covering_ebit_budget_cat0, 6)
                 if self.covering_ebit_budget_cat0 is not None
@@ -268,13 +273,13 @@ def solve_covering_capacity_hierarchy(
 
 
 def _exact_min_cut_ratio(net: QuantumNetwork) -> Tuple[float, Optional[List[int]]]:
-    """Compute exact min_{A subset V} (source cut across A) / (target cut across A)."""
+    """Enumerate cuts through 14 parties, then sample source minimum cuts for larger networks."""
     n = net.num_parties
     best_ratio = float("inf")
     best_cut: Optional[List[int]] = None
 
     if n <= 14:
-        for mask in range(1, 1 << (n - 1)):
+        for mask in range((1 << (n - 1)) - 1):
             in_a = {0}
             for bit in range(n - 1):
                 if mask & (1 << bit):
@@ -396,11 +401,11 @@ def _evaluate_linear_ratio(net: QuantumNetwork, D: np.ndarray) -> float:
     return float(num / denom)
 
 
-def _cat0_spectral_witness_search(
+def _search_cat0_candidates(
     net: QuantumNetwork,
     seed_metrics: List[np.ndarray],
 ) -> Tuple[float, np.ndarray]:
-    """Find minimum source/target ratio over genuine CAT(0) metrics (cuts, R-trees, CAT(0) SOCP projections, & L-BFGS-B R^d)."""
+    """Return the lowest ratio found among sampled metrics passing the four-point check."""
     n = net.num_parties
     best_ratio = float("inf")
     best_D = np.zeros((n, n), dtype=float)
@@ -520,7 +525,7 @@ def check_slocc_feasibility(
                 f"L2-covering ebit compression ({cov.ebit_budget_metric:.3f} -> {cov.ebit_budget_cat0:.3f} ebits)."
             )
 
-    cat0_ratio, D_cat0 = _cat0_spectral_witness_search(net, seeds)
+    cat0_ratio, D_cat0 = _search_cat0_candidates(net, seeds)
 
     if min_cut_ratio < 1.0 - tol:
         verdict = "FORBIDDEN_BY_CUT"
@@ -530,24 +535,23 @@ def check_slocc_feasibility(
         )
         witness = seeds[0] if seeds else D_cat0
     elif cat0_ratio < 1.0 - tol:
-        verdict = "FORBIDDEN_BY_CAT0_SPECTRAL"
+        verdict = "CAT0_CANDIDATE"
         notes.append(
-            f"Valid CAT(0) spectral metric witnesses source/target ratio {cat0_ratio:.4f} < 1.0."
+            f"A sampled four-point metric has ratio {cat0_ratio:.4f} < 1. Spectral realization remains unverified."
         )
         witness = D_cat0
     elif metric_lp_ratio < 1.0 - tol:
-        verdict = "CLASSICAL_LP_GAP_ONLY"
+        verdict = "METRIC_LP_GAP"
         notes.append(
-            f"Classical Metric LP < 1 ({metric_lp_ratio:.4f}), whereas every CAT(0) spectral bound >= 1 "
-            f"(min CAT(0)={cat0_ratio:.4f}; LP witness violates Berg-Nikolaev by {lp_audit.max_berg_nikolaev_violation:.4f} "
-            f"and is ruled out of Strassen's spectrum by Theorem C.1!)."
+            f"The metric LP ratio is {metric_lp_ratio:.4f}. The lowest sampled four-point ratio "
+            f"was {cat0_ratio:.4f}. Single-restriction feasibility remains unresolved."
         )
         witness = D_lp
     else:
         verdict = "FEASIBLE_UNDER_OUTER_BOUNDS"
         notes.append(
-            f"Passes all bipartition cuts (min ratio {min_cut_ratio:.4f}), metric LP ({metric_lp_ratio:.4f}), "
-            f"and CAT(0) spectral checks ({cat0_ratio:.4f})."
+            f"Checked bipartitions (lowest ratio {min_cut_ratio:.4f}), the metric LP ({metric_lp_ratio:.4f}), "
+            f"and sampled four-point metrics ({cat0_ratio:.4f}) found no obstruction."
         )
         witness = D_cat0
 

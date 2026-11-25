@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from fractions import Fraction
+from decimal import Decimal
 import json
 import pathlib
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -36,11 +38,11 @@ class QuantumNetwork:
 
     @property
     def total_source_ebits(self) -> float:
-        return sum(self.source_eprs.values()) + sum(g.rate for g in self.source_ghz)
+        return float(sum(self.source_eprs.values())) + sum(g.rate for g in self.source_ghz)
 
     @property
     def total_target_ebits(self) -> float:
-        return sum(self.target_eprs.values())
+        return float(sum(self.target_eprs.values()))
 
     def to_dict(self) -> Dict[str, object]:
         return {
@@ -48,16 +50,26 @@ class QuantumNetwork:
             "num_parties": self.num_parties,
             "party_labels": self.party_labels,
             "description": self.description,
-            "source_eprs": [[u, v, w] for (u, v), w in sorted(self.source_eprs.items())],
-            "target_eprs": [[u, v, w] for (u, v), w in sorted(self.target_eprs.items())],
+            "source_eprs": [[u, v, _json_weight(w)] for (u, v), w in sorted(self.source_eprs.items())],
+            "target_eprs": [[u, v, _json_weight(w)] for (u, v), w in sorted(self.target_eprs.items())],
             "source_ghz": [{"parties": list(g.parties), "rate": g.rate} for g in self.source_ghz],
         }
 
     @classmethod
     def from_dict(cls, data: Dict[str, object]) -> "QuantumNetwork":
         n = int(data["num_parties"])
-        src = {(int(u), int(v)): float(w) for u, v, w in data.get("source_eprs", [])}
-        tgt = {(int(u), int(v)): float(w) for u, v, w in data.get("target_eprs", [])}
+        def read_edges(rows):
+            weights = {}
+            for u, v, w in rows:
+                edge = (int(u), int(v))
+                rate = Fraction(str(w))
+                if rate < 0:
+                    raise ValueError(f"Negative EPR weight on {edge}")
+                weights[edge] = weights.get(edge, 0) + rate
+            return weights
+
+        src = read_edges(data.get("source_eprs", []))
+        tgt = read_edges(data.get("target_eprs", []))
         ghz = [
             GHZResource(parties=tuple(sorted(set(int(p) for p in g["parties"]))), rate=float(g.get("rate", 1.0)))
             for g in data.get("source_ghz", [])
@@ -75,18 +87,26 @@ class QuantumNetwork:
 
     @classmethod
     def from_json_file(cls, path: pathlib.Path) -> "QuantumNetwork":
-        return cls.from_dict(json.loads(path.read_text(encoding="utf-8")))
+        return cls.from_dict(json.loads(path.read_text(encoding="utf-8"), parse_float=Decimal))
 
 
-def _canon_edges(edges: Dict[Tuple[int, int], float], n: int) -> Dict[Tuple[int, int], float]:
-    out: Dict[Tuple[int, int], float] = {}
+def _json_weight(weight: Fraction) -> int | float | str:
+    weight = Fraction(str(weight))
+    if weight.denominator == 1:
+        return weight.numerator
+    value = float(weight)
+    return value if Fraction(str(value)) == weight else str(weight)
+
+
+def _canon_edges(edges: Dict[Tuple[int, int], float], n: int) -> Dict[Tuple[int, int], Fraction]:
+    out: Dict[Tuple[int, int], Fraction] = {}
     for (u, v), w in edges.items():
         if u == v or w <= 0:
             continue
         if not (0 <= u < n and 0 <= v < n):
             raise ValueError(f"Edge ({u}, {v}) out of range for {n} parties")
         key = (u, v) if u < v else (v, u)
-        out[key] = out.get(key, 0.0) + float(w)
+        out[key] = out.get(key, 0) + Fraction(str(w))
     return out
 
 

@@ -34,3 +34,10 @@ python -m quantum_cat0 benchmark
 python -m quantum_cat0 certify hypercube_Q3 --lean-out Q3Cert.lean
 python -m quantum_cat0 certify K23_bipartite
 ```
+
+
+### Interpreting single-restriction results
+
+`FORBIDDEN_BY_CUT` includes a concrete bipartition witness. `CAT0_CANDIDATE` reports a sampled four-point metric with ratio below one whose spectral realization is unknown. `METRIC_LP_GAP` reports a relaxed LP ratio below one when the geometric search found no such candidate. The candidate ratio is the lowest value observed during that search. JSON exposes it as `cat0_candidate_ratio` and retains the historical `cat0_spectral_ratio` alias.
+
+Exact Enflo certificates use rational EPR weights throughout the final check and Lean export. The denominator limit applies to proposed dual multipliers. JSON decimal weights are parsed before conversion to floating-point solver coefficients.
