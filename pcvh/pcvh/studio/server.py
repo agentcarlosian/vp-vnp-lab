@@ -9,11 +9,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import datetime
+import hmac
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
 import json
 import pathlib
+import secrets
 import sys
 import threading
 import time
@@ -96,12 +98,18 @@ class StudioState:
     def __init__(self, root_dir: pathlib.Path, *, lean_bin: Optional[pathlib.Path] = None) -> None:
         self.root_dir = pathlib.Path(root_dir).resolve()
         self.lean_bin = lean_bin
+        self.csrf_token = secrets.token_urlsafe(32)
         self._lock = threading.Lock()
         self._jobs: Dict[str, StudioJob] = {}
+        self._max_jobs = 100
         self._lsp_pool: Dict[str, tuple[LeanLSPClient, threading.Lock]] = {}
 
     def get_ui_html(self) -> str:
-        return files(__package__).joinpath("ui.html").read_text(encoding="utf-8")
+        html = files(__package__).joinpath("ui.html").read_text(encoding="utf-8")
+        meta = f'<meta name="pcvh-csrf-token" content="{self.csrf_token}">'
+        if "</head>" in html:
+            return html.replace("</head>", f"  {meta}\n</head>", 1)
+        return meta + html
 
     def close_project_lsp(self, project_id: str) -> None:
         with self._lock:
@@ -269,7 +277,16 @@ class StudioState:
         if not fp.is_relative_to(proj_dir):
             raise ValueError(f"File path escapes project root: {rel_file}")
 
-        tcb_protected = {cfg.statement_rel, cfg.challenge_rel, "lakefile.toml", "lean-toolchain"}
+        tcb_protected = {
+            cfg.statement_rel,
+            cfg.challenge_rel,
+            "lakefile.toml",
+            "lakefile.lean",
+            "lean-toolchain",
+            "pcvh.toml",
+            LOCK_FILENAME,
+            *(p.replace("\\", "/") for p in cfg.tcb_rel_paths),
+        }
         if clean_rel in tcb_protected and not allow_tcb:
             raise ValueError(
                 f"'{clean_rel}' is a protected TCB specification file. Enable 'Unlock TCB Edit' to modify and re-pin."
@@ -410,6 +427,21 @@ class StudioState:
         )
         with self._lock:
             self._jobs[job_id] = job
+            while len(self._jobs) > self._max_jobs:
+                oldest = next(iter(self._jobs))
+                self._jobs.pop(oldest, None)
+
+        def _append_log(line: str) -> None:
+            with self._lock:
+                job.logs.append(line)
+
+        def _finish(status: str, *, result: Optional[Dict[str, Any]] = None, error: Optional[str] = None) -> None:
+            with self._lock:
+                job.status = status
+                if result is not None:
+                    job.result = result
+                if error is not None:
+                    job.error = error
 
         def _worker() -> None:
             t0 = time.time()
@@ -419,18 +451,16 @@ class StudioState:
                 cfg: SpecConfig = load_spec_config(proj_dir)
                 if action == "pin":
                     lock = pin_tcb_manifest(cfg, save_snapshot=True)
-                    job.logs.append(f"Pinned {len(lock['files'])} TCB files (sha256={lock['spec_bundle_sha256'][:16]}...).")
-                    job.result = lock
-                    job.status = "succeeded"
+                    _append_log(f"Pinned {len(lock['files'])} TCB files (sha256={lock['spec_bundle_sha256'][:16]}...).")
+                    _finish("succeeded", result=lock)
                 elif action == "falsify":
                     res = run_falsification_precheck(cfg, lean_bin=self.lean_bin)
-                    job.logs.append(f"Falsification status={res.status} ({res.samples_evaluated} samples across {len(res.theorems_tested)} theorems).")
+                    _append_log(f"Falsification status={res.status} ({res.samples_evaluated} samples across {len(res.theorems_tested)} theorems).")
                     for cex in res.counterexamples:
-                        job.logs.append(f"  COUNTEREXAMPLE [{cex.source}] {cex.theorem}: {cex.inputs}")
+                        _append_log(f"  COUNTEREXAMPLE [{cex.source}] {cex.theorem}: {cex.inputs}")
                     for note in res.notes:
-                        job.logs.append(f"  note: {note}")
-                    job.result = res.to_dict()
-                    job.status = "succeeded" if res.ok else "failed"
+                        _append_log(f"  note: {note}")
+                    _finish("succeeded" if res.ok else "failed", result=res.to_dict())
                 elif action == "verify":
                     att_fp = proj_dir / "proof-attestation.json"
                     res = run_palomar_gate(
@@ -441,12 +471,11 @@ class StudioState:
                         attestation_out=att_fp,
                     )
                     for chk_k, chk_v in res.checks.items():
-                        job.logs.append(f"  [{chk_k}] {chk_v}")
+                        _append_log(f"  [{chk_k}] {chk_v}")
                     for reason in res.failure_reasons:
-                        job.logs.append(f"  ! {reason}")
-                    job.logs.append(f"Palomar verdict={res.verdict} ({len(res.verified_theorems)} theorems, axioms={res.axioms_used}).")
-                    job.result = res.to_attestation_dict()
-                    job.status = "succeeded" if res.verdict == "VERIFIED" else "failed"
+                        _append_log(f"  ! {reason}")
+                    _append_log(f"Palomar verdict={res.verdict} ({len(res.verified_theorems)} theorems, axioms={res.axioms_used}).")
+                    _finish("succeeded" if res.verdict == "VERIFIED" else "failed", result=res.to_attestation_dict())
                 elif action == "prove":
                     res = run_autonomous_prove_pipeline(
                         cfg,
@@ -458,30 +487,28 @@ class StudioState:
                     )
                     for pr in res.proof_results:
                         mark = "PROVED" if pr.proved else "FAILED"
-                        job.logs.append(f"  [{mark}] {pr.theorem_name} (tier={pr.tier_used}, attempts={pr.attempts}, {pr.duration_s:.1f}s)")
-                    job.logs.append(
+                        _append_log(f"  [{mark}] {pr.theorem_name} (tier={pr.tier_used}, attempts={pr.attempts}, {pr.duration_s:.1f}s)")
+                    _append_log(
                         f"Autonomous prove status={res.status} (waves={res.waves_executed}, peak_workers={res.peak_parallel_workers})."
                     )
-                    job.result = res.to_dict()
-                    job.status = "succeeded" if res.status == "VERIFIED" else "failed"
+                    _finish("succeeded" if res.status == "VERIFIED" else "failed", result=res.to_dict())
                 elif action == "diff-reprove":
                     res = run_diff_aware_reprove(
                         cfg,
                         lean_bin=self.lean_bin,
                         attestation_out=proj_dir / "proof-attestation.json",
                     )
-                    job.logs.append(
+                    _append_log(
                         f"Diff-reprove status={res.status} (cached={len(res.cached_theorems)}, reproved={len(res.reproved_theorems)})."
                     )
-                    job.result = res.to_dict()
-                    job.status = "succeeded" if res.status == "VERIFIED" else "failed"
+                    _finish("succeeded" if res.status == "VERIFIED" else "failed", result=res.to_dict())
             except Exception as exc:
-                job.status = "failed"
-                job.error = str(exc)
-                job.logs.append(f"ERROR: {exc}")
+                _append_log(f"ERROR: {exc}")
+                _finish("failed", error=str(exc))
             finally:
-                job.duration_s = time.time() - t0
-                job.finished_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                with self._lock:
+                    job.duration_s = time.time() - t0
+                    job.finished_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         threading.Thread(target=_worker, daemon=True).start()
         return job
@@ -507,9 +534,44 @@ class PCVHStudioServer(ThreadingHTTPServer):
 
 class _StudioHandler(BaseHTTPRequestHandler):
     server: PCVHStudioServer  # type: ignore[assignment]
+    _MAX_BODY_BYTES = 2 * 1024 * 1024
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         return  # Keep terminal clean unless debugging
+
+    def _allowed_hosts(self) -> set[str]:
+        bound = str(self.server.server_address[0]).lower()
+        hosts = {"127.0.0.1", "localhost", "::1"}
+        if bound not in ("", "0.0.0.0", "::"):
+            hosts.add(bound)
+        return hosts
+
+    def _check_host_header(self) -> bool:
+        raw_host = (self.headers.get("Host") or "").strip()
+        if not raw_host:
+            return False
+        parsed = urllib.parse.urlsplit(f"http://{raw_host}")
+        hostname = (parsed.hostname or "").lower()
+        return hostname in self._allowed_hosts()
+
+    def _check_post_security(self) -> Optional[tuple[int, str]]:
+        if not self._check_host_header():
+            return HTTPStatus.FORBIDDEN, "Rejected non-local Host header."
+        sec_fetch = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+        if sec_fetch and sec_fetch not in ("same-origin", "none"):
+            return HTTPStatus.FORBIDDEN, "Rejected cross-site request."
+        origin = (self.headers.get("Origin") or "").strip()
+        if origin:
+            parsed = urllib.parse.urlsplit(origin)
+            if parsed.scheme != "http" or (parsed.hostname or "").lower() not in self._allowed_hosts():
+                return HTTPStatus.FORBIDDEN, "Rejected cross-origin request."
+        ctype = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+        if ctype != "application/json":
+            return HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "POST requests require Content-Type: application/json."
+        token = (self.headers.get("X-PCVH-Token") or "").strip()
+        if not token or not hmac.compare_digest(token, self.server.studio_state.csrf_token):
+            return HTTPStatus.FORBIDDEN, "Missing or invalid X-PCVH-Token header."
+        return None
 
     def _send_json(self, code: int, payload: Dict[str, Any]) -> None:
         body = json.dumps(payload, indent=2).encode("utf-8")
@@ -517,28 +579,42 @@ class _StudioHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)
 
     def _read_json_body(self) -> Dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"))
-        if length <= 0:
+        if length < 0:
+            raise ValueError("Invalid Content-Length.")
+        if length > self._MAX_BODY_BYTES:
+            raise OverflowError(f"Request body exceeds limit ({self._MAX_BODY_BYTES} bytes).")
+        if length == 0:
             return {}
         raw = self.rfile.read(length)
         return json.loads(raw.decode("utf-8"))
 
     def do_GET(self) -> None:  # noqa: N802
+        if not self._check_host_header():
+            self._send_json(HTTPStatus.FORBIDDEN, {"error": "Rejected non-local Host header."})
+            return
         parsed = urllib.parse.urlparse(self.path)
         qs = urllib.parse.parse_qs(parsed.query)
         st = self.server.studio_state
 
         try:
             if page := _STUDIO_PAGES.get(parsed.path):
-                body = files(__package__).joinpath(page).read_bytes()
+                body = (
+                    st.get_ui_html().encode("utf-8")
+                    if page == "ui.html"
+                    else files(__package__).joinpath(page).read_bytes()
+                )
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
                 self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("X-Frame-Options", "DENY")
                 self.end_headers()
                 self.wfile.write(body)
                 return
@@ -569,6 +645,8 @@ class _StudioHandler(BaseHTTPRequestHandler):
                 return
 
             self._send_json(HTTPStatus.NOT_FOUND, {"error": f"Not found: {parsed.path}"})
+        except OverflowError as exc:
+            self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": str(exc)})
         except FileNotFoundError as exc:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": str(exc)})
         except ValueError as exc:
@@ -577,6 +655,10 @@ class _StudioHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc)})
 
     def do_POST(self) -> None:  # noqa: N802
+        err = self._check_post_security()
+        if err is not None:
+            self._send_json(err[0], {"error": err[1]})
+            return
         parsed = urllib.parse.urlparse(self.path)
         st = self.server.studio_state
         try:
@@ -633,6 +715,8 @@ class _StudioHandler(BaseHTTPRequestHandler):
                 return
 
             self._send_json(HTTPStatus.NOT_FOUND, {"error": f"Not found: {parsed.path}"})
+        except OverflowError as exc:
+            self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": str(exc)})
         except FileNotFoundError as exc:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": str(exc)})
         except ValueError as exc:
