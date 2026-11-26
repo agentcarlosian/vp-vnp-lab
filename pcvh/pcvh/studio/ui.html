@@ -903,6 +903,13 @@
     let activeJobTimer = null;
     let lastStudioPubKey = "";
     let fileDiagnostics = {};
+    const STUDIO_CSRF_TOKEN = document.querySelector('meta[name="pcvh-csrf-token"]')?.content || "";
+    function postHeaders() {
+      return {
+        "Content-Type": "application/json",
+        "X-PCVH-Token": STUDIO_CSRF_TOKEN,
+      };
+    }
 
     const TOKEN_RE = /\b(theorem|lemma|def|private|structure|inductive|where|by|sorry|have|let|in|if|then|else|match|with|induction|generalizing|rcases|unfold|simp|simp_all|omega|grind|rw|exact|all_goals|try|open|namespace|end|export|function|interface|return|pub|fn|struct|impl|use|class|self|import|from)\b|\b(Nat|Int|Bool|String|List|Prop|IO|Unit|Decision|DecisionCode|Policy|GuardState|ToolCall|Order|MatchOutcome|QuoteBalances|ReplayWindow|Expr|ValidatorVote|LedgerState|TransferEvent|StepResult|SqMetric|Q3Cat0|u64|u128|usize|bool|int|uint256)\b|\b(\d[\d_]*)\b/g;
 
@@ -1033,7 +1040,15 @@
 
     function isProtectedTcbFile(relPath) {
       if (!currentDetail) return false;
-      return [currentDetail.statement_rel, currentDetail.challenge_rel, "lakefile.toml", "lean-toolchain"].includes(relPath);
+      return [
+        currentDetail.statement_rel,
+        currentDetail.challenge_rel,
+        "lakefile.toml",
+        "lakefile.lean",
+        "lean-toolchain",
+        "pcvh.toml",
+        "spec.lock.json",
+      ].includes(relPath);
     }
 
     async function selectProject(pid) {
@@ -1233,7 +1248,7 @@
       const allowTcb = document.getElementById("chk-allow-tcb").checked;
       const resp = await fetch("/api/file", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: postHeaders(),
         body: JSON.stringify({ project_id: currentProj, path: activeFile, content, allow_tcb: allowTcb }),
       });
       const data = await resp.json();
@@ -1264,7 +1279,7 @@
         }
         const resp = await fetch("/api/lsp/goals", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: postHeaders(),
           body: JSON.stringify(payload),
         });
         const data = await resp.json();
@@ -1395,7 +1410,7 @@
       if (!currentProj) return;
       const resp = await fetch("/api/sign", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: postHeaders(),
         body: JSON.stringify({ project_id: currentProj }),
       });
       const data = await resp.json();
@@ -1415,7 +1430,7 @@
       const out = document.getElementById("sig-result");
       const resp = await fetch("/api/verify-sig", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: postHeaders(),
         body: JSON.stringify({ project_id: currentProj, public_key_pem: pem }),
       });
       const data = await resp.json();
@@ -1459,7 +1474,7 @@
       switchInspector("jobs");
       const resp = await fetch("/api/action", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: postHeaders(),
         body: JSON.stringify({ project_id: currentProj, action, options }),
       });
       const job = await resp.json();
@@ -1507,7 +1522,7 @@
       }
       const resp = await fetch("/api/init", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: postHeaders(),
         body: JSON.stringify({ dir, language, template }),
       });
       const data = await resp.json();

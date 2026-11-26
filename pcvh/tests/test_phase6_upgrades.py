@@ -409,10 +409,17 @@ def test_phase6_dual_kernel_runner_strict_enforcement_and_export_replay(tmp_path
 _NO_PROXY_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def _http_json(url: str, payload: Dict[str, Any] | None = None) -> Tuple[int, Dict[str, Any]]:
+def _http_json(
+    url: str,
+    payload: Dict[str, Any] | None = None,
+    *,
+    headers: Dict[str, str] | None = None,
+) -> Tuple[int, Dict[str, Any]]:
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
-    headers = {"Content-Type": "application/json"} if payload is not None else {}
-    req = urllib.request.Request(url, data=data, headers=headers, method="POST" if payload is not None else "GET")
+    req_headers = {"Content-Type": "application/json"} if payload is not None else {}
+    if headers:
+        req_headers.update(headers)
+    req = urllib.request.Request(url, data=data, headers=req_headers, method="POST" if payload is not None else "GET")
     try:
         with _NO_PROXY_OPENER.open(req, timeout=30) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
@@ -430,6 +437,7 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
     srv = create_studio_server(ws_root, host="127.0.0.1", port=0, lean_bin=LOCAL_LEAN_BIN)
     port = srv.server_address[1]
     base = f"http://127.0.0.1:{port}"
+    auth_hdr = {"X-PCVH-Token": srv.studio_state.csrf_token}
     th = threading.Thread(target=srv.serve_forever, daemon=True)
     th.start()
 
@@ -439,6 +447,7 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
             html = resp.read().decode("utf-8")
             assert resp.status == 200
             assert "PCVH Studio" in html and "$/lean/plainGoal" in html
+            assert srv.studio_state.csrf_token in html
         with _NO_PROXY_OPENER.open(f"{base}/showcase", timeout=10) as resp:
             assert resp.status == 200 and b"Eight Machine-Checked Engineering Specifications" in resp.read()
         with _NO_PROXY_OPENER.open(f"{base}/eval", timeout=10) as resp:
@@ -448,6 +457,7 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
         code, init_res = _http_json(
             f"{base}/api/init",
             {"dir": "demo_ledger", "language": "python", "template": "ledger"},
+            headers=auth_hdr,
         )
         assert code == 201 and init_res["pinned"] is True
 
@@ -477,12 +487,13 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
                 "line": sorry_line,
                 "col": 2,
             },
+            headers=auth_hdr,
         )
         assert code == 200
         assert any("⊢" in g for g in lsp_res["goals"]), f"Expected live Lean goal, got: {lsp_res}"
 
         # 7. POST /api/action (`prove`) runs asynchronously and produces a VERIFIED attestation!
-        code, job = _http_json(f"{base}/api/action", {"project_id": "demo_ledger", "action": "prove"})
+        code, job = _http_json(f"{base}/api/action", {"project_id": "demo_ledger", "action": "prove"}, headers=auth_hdr)
         assert code == 202 and job["job_id"]
         deadline = time.time() + 120.0
         final_job = job
@@ -495,12 +506,13 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
         assert final_job["result"]["status"] == "VERIFIED"
 
         # 8. One-click Studio signing (`POST /api/sign`) + verification (`POST /api/verify-sig`) + sub-lemma tabs!
-        code, sign_res = _http_json(f"{base}/api/sign", {"project_id": "demo_ledger"})
+        code, sign_res = _http_json(f"{base}/api/sign", {"project_id": "demo_ledger"}, headers=auth_hdr)
         assert code == 200 and sign_res["ok"] is True and sign_res["public_key_pem"]
 
         code, sig_res = _http_json(
             f"{base}/api/verify-sig",
             {"project_id": "demo_ledger", "public_key_pem": sign_res["public_key_pem"]},
+            headers=auth_hdr,
         )
         assert code == 200 and sig_res["ok"] is True
 
@@ -513,6 +525,7 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
         code_tcb_blocked, _ = _http_json(
             f"{base}/api/file",
             {"project_id": "demo_ledger", "path": "Specs/LedgerCore/Challenge.lean", "content": "-- blocked"},
+            headers=auth_hdr,
         )
         assert code_tcb_blocked == 400
 
@@ -526,12 +539,14 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
                 "col": 2,
                 "content": unsaved_lean,
             },
+            headers=auth_hdr,
         )
         assert code_buf == 200 and "goals" in buf_lsp
 
         code_save_ok, save_res = _http_json(
             f"{base}/api/file",
             {"project_id": "demo_ledger", "path": "target.py", "content": det_after["files"]["target.py"]},
+            headers=auth_hdr,
         )
         assert code_save_ok == 200 and save_res["ok"] is True
     finally:
@@ -571,3 +586,82 @@ def test_phase6_static_audit_blocks_guillemets_csimp_and_compile_time_eval(tmp_p
     assert "banned_sorry" in rules
     assert "banned_extern" in rules
     assert "banned_compile_time_exec" in rules
+
+
+def test_phase6_static_audit_blocks_char_literal_raw_string_and_metaprogramming(tmp_path: pathlib.Path):
+    """Ensure char literals (`'\"'`), raw strings, and metaprogramming hooks cannot blind the static audit."""
+    from pcvh.tcb.static_audit import scan_untrusted_lean_files
+
+    proj = tmp_path / "audit_char_bypass"
+    scaffold_project(proj, language="python", template="ledger", auto_pin=True)
+    cfg = load_spec_config(proj)
+
+    (proj / "Solution.lean").write_text(
+        "import Specs.LedgerCore.Statement\n"
+        "def q : Char := '\"'\n"
+        "def r : String := r#\"benign \" sorry\"#\n"
+        "def x' : Nat := 1\n"
+        "def y' : Nat := x' + 1\n"
+        "initialize pure ()\n"
+        "macro \"sneak\" : term => `(sorry)\n"
+        "#eval IO.println \"pwned\"\n"
+        "unsafe def bad := sorry\n",
+        encoding="utf-8",
+    )
+    audit = scan_untrusted_lean_files(proj, cfg)
+    assert not audit.ok
+    rules = {v.rule for v in audit.violations}
+    assert "banned_sorry" in rules
+    assert "banned_unsafe" in rules
+    assert "banned_compile_time_exec" in rules
+
+
+def test_phase6_studio_csrf_origin_host_and_tcb_protection(tmp_path: pathlib.Path):
+    """Verify Studio rejects cross-origin/CSRF POSTs, DNS-rebinding Host headers, and unprotected pcvh.toml writes."""
+    ws_root = tmp_path / "studio_sec"
+    ws_root.mkdir()
+    scaffold_project(ws_root / "demo", language="python", template="ledger", auto_pin=True)
+
+    srv = create_studio_server(ws_root, host="127.0.0.1", port=0)
+    port = srv.server_address[1]
+    base = f"http://127.0.0.1:{port}"
+    th = threading.Thread(target=srv.serve_forever, daemon=True)
+    th.start()
+    try:
+        # Missing CSRF token -> 403
+        code, _ = _http_json(f"{base}/api/action", {"project_id": "demo", "action": "pin"})
+        assert code == 403
+
+        # Wrong Content-Type (simple CORS text/plain) -> 415
+        code, _ = _http_json(
+            f"{base}/api/action",
+            {"project_id": "demo", "action": "pin"},
+            headers={"Content-Type": "text/plain", "X-PCVH-Token": srv.studio_state.csrf_token},
+        )
+        assert code == 415
+
+        # Cross-origin Origin header -> 403
+        code, _ = _http_json(
+            f"{base}/api/action",
+            {"project_id": "demo", "action": "pin"},
+            headers={"Origin": "https://evil.example", "X-PCVH-Token": srv.studio_state.csrf_token},
+        )
+        assert code == 403
+
+        # DNS-rebinding Host header -> 403
+        code, _ = _http_json(
+            f"{base}/api/overview",
+            headers={"Host": "rebind.evil.example"},
+        )
+        assert code == 403
+
+        # Valid token still blocks overwriting pcvh.toml without allow_tcb=True
+        code, _ = _http_json(
+            f"{base}/api/file",
+            {"project_id": "demo", "path": "pcvh.toml", "content": "# tampered"},
+            headers={"X-PCVH-Token": srv.studio_state.csrf_token},
+        )
+        assert code == 400
+    finally:
+        srv.shutdown()
+        srv.server_close()

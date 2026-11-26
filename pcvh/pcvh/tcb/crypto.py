@@ -6,6 +6,7 @@ import base64
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -82,7 +83,20 @@ def generate_ed25519_keypair(
 
     priv_path = out / f"{prefix}.key.pem"
     pub_path = out / f"{prefix}.pub.pem"
-    priv_path.write_bytes(priv_pem)
+    if os.name != "nt":
+        fd = os.open(priv_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(priv_pem)
+        except Exception:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            raise
+        os.chmod(priv_path, 0o600)
+    else:
+        priv_path.write_bytes(priv_pem)
     pub_path.write_bytes(pub_pem)
 
     key_id = compute_public_key_id(pub_pem)

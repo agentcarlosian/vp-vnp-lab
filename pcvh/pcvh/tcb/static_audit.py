@@ -49,8 +49,51 @@ class StaticAuditResult:
         }
 
 
+def _match_lean_char_literal(source: str, i: int) -> int:
+    """Return length of a Lean 4 character literal starting at `i`, or 0 if not one."""
+    n = len(source)
+    if source[i] != "'" or i + 2 >= n:
+        return 0
+    if i > 0 and (source[i - 1].isalnum() or source[i - 1] in "_'"):
+        return 0
+    nxt = source[i + 1]
+    if nxt == "\n" or nxt == "'":
+        return 0
+    if nxt == "\\":
+        if i + 3 < n and source[i + 2] == "x":
+            if i + 5 < n and all(c in "0123456789abcdefABCDEF" for c in source[i + 3 : i + 5]) and source[i + 5] == "'":
+                return 6
+            return 0
+        if i + 3 < n and source[i + 2] == "u":
+            if i + 7 < n and all(c in "0123456789abcdefABCDEF" for c in source[i + 3 : i + 7]) and source[i + 7] == "'":
+                return 8
+            return 0
+        if i + 3 < n and source[i + 2] != "\n" and source[i + 3] == "'":
+            return 4
+        return 0
+    if source[i + 2] == "'":
+        return 3
+    return 0
+
+
+def _match_lean_raw_string_prefix(source: str, i: int) -> int:
+    """Return `#` count for Lean 4 raw string `r#\"...\"#` at `i`, or 0 if not one."""
+    n = len(source)
+    if source[i] != "r":
+        return 0
+    if i > 0 and (source[i - 1].isalnum() or source[i - 1] in "_'"):
+        return 0
+    j = i + 1
+    while j < n and source[j] == "#":
+        j += 1
+    hashes = j - (i + 1)
+    if hashes > 0 and j < n and source[j] == '"':
+        return hashes
+    return 0
+
+
 def strip_lean_comments_and_strings(source: str) -> str:
-    """Replace Lean comments (`--`, nested `/- ... -/`) and string literals with spaces, preserving line numbers."""
+    """Replace Lean comments (`--`, nested `/- ... -/`), char literals, raw strings, and string literals with spaces, preserving line numbers."""
     out: List[str] = []
     i = 0
     n = len(source)
@@ -80,7 +123,10 @@ def strip_lean_comments_and_strings(source: str) -> str:
 
         if in_string:
             if ch == "\\" and i + 1 < n:
-                out.append("  ")
+                if source[i + 1] == "\n":
+                    out.append(" \n")
+                else:
+                    out.append("  ")
                 i += 2
                 continue
             if ch == '"':
@@ -91,6 +137,27 @@ def strip_lean_comments_and_strings(source: str) -> str:
             else:
                 out.append(" ")
             i += 1
+            continue
+
+        char_len = _match_lean_char_literal(source, i)
+        if char_len:
+            out.append(" " * char_len)
+            i += char_len
+            continue
+
+        raw_hashes = _match_lean_raw_string_prefix(source, i)
+        if raw_hashes:
+            prefix_len = 2 + raw_hashes
+            out.append(" " * prefix_len)
+            i += prefix_len
+            closing = '"' + ("#" * raw_hashes)
+            while i < n:
+                if source.startswith(closing, i):
+                    out.append(" " * len(closing))
+                    i += len(closing)
+                    break
+                out.append("\n" if source[i] == "\n" else " ")
+                i += 1
             continue
 
         if ch == '"':
@@ -127,7 +194,12 @@ BANNED_RULES: Tuple[Tuple[str, re.Pattern[str]], ...] = (
     ("banned_extern", re.compile(r"@\[[^\]]*\b(?:extern|csimp)\b")),
     ("banned_ofReduceBool", re.compile(r"\bofReduceBool\b|\bofReduceNat\b")),
     ("banned_env_addDecl", re.compile(r"\b(?:addDecl|addAndCompile|addAxiom|setEnv)\b")),
-    ("banned_compile_time_exec", re.compile(r"(?:^|\s)(?:#eval|run_cmd|elab)\b")),
+    (
+        "banned_compile_time_exec",
+        re.compile(
+            r"(?:^|\s)(?:#eval|run_cmd|elab|elab_rules|command_elab|term_elab|tactic_elab|macro|macro_rules|syntax|initialize|builtin_initialize)\b"
+        ),
+    ),
     ("banned_debug_skip_kernel", re.compile(r"set_option\s+debug\.skipKernelTC\b")),
 )
 

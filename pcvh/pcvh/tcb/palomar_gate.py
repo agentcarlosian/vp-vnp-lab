@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -348,6 +349,15 @@ def run_palomar_gate(
         checks["lean_kernel_build"] = "PASS"
 
         # 5. Palomar Kernel Comparator (DefEq theorem types + strict axiom allowlist)
+        lean_ident = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*$")
+        for label, ident in [
+            ("challenge_module", cfg.challenge_module),
+            ("solution_module", cfg.solution_module),
+            *(("allowed_axiom", ax) for ax in cfg.allowed_axioms),
+        ]:
+            if not lean_ident.fullmatch(ident):
+                checks["palomar_comparator"] = f"FAIL (invalid {label})"
+                return rejected(f"Invalid Lean identifier in {label}: {ident!r}", man.spec_bundle_sha256)
         allowed_lean = ", ".join(f"`{ax}" for ax in cfg.allowed_axioms)
         comp_script = (
             _PALOMAR_COMPARATOR_TEMPLATE
