@@ -233,7 +233,7 @@ jobs:
           python -m pip install cryptography
 
       - name: Cache & build independent lean4export + nanoda kernel tools
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/lean-ci-tools
           key: lean-ci-tools-v4.33.1-nanoda-68d5ca9d
