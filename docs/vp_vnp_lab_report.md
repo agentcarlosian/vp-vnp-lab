@@ -13,7 +13,7 @@
 
 ### #1. Independent Audit & Full Local Build of `anthropics/formal-math/vp-vnp`
 
-Upstream repository: [`anthropics/formal-math`](https://github.com/anthropics/formal-math) (`vp-vnp/`, Lean 4.33.1, Mathlib commit `0df444a360eaa60ab8c11dca51a86af692955474`, all 8,690 cache files fetched).
+Upstream repository: [`anthropics/formal-math`](https://github.com/anthropics/formal-math) (`vp-vnp/`, Lean 4.33.1, Mathlib commit `0df444a360eaa60ab8c11dca51a86af692955474`, all 8,690 cache files fetched). This is the historical local run; the [reproduction recipe](../remark-n6-lean/README.md#how-to-reproduce-against-anthropicsformal-math) pins the published upstream merge separately.
 
 | Audit Check | Result | Notes |
 | --- | --- | --- |
@@ -166,6 +166,6 @@ Three standalone engineering tools have been built, verified, and tested end-to-
 
 | Project | Folder | Status | Highlights |
 | --- | --- | --- | --- |
-| **Proof-Carrying Verification Harness (PCVH)** | [`pcvh/`](../pcvh/) | **Phases 1–6 Complete** (39/39 tests) | Zero-trust Palomar gate (12/12 red-team attacks + guillemet/metaprogramming anti-cheat), live Lean 4 LSP + bounded falsifier + best-first LSP tree search + Anthropic/OpenAI/Ollama provers + parallel wave scheduling, **8 sequential verified blueprints (`01`–`08`, 48 theorems, 6,000 Python/Rust/TS traces)**, `lean4export`+`nanoda` dual-kernel CI & Ed25519 DSSE signing, interactive `pcvh studio` workbench + [specifications monograph](../pcvh/blueprints_showcase.html), and 40/40 live eval benchmark ([`pcvh/eval_dashboard.html`](../pcvh/eval_dashboard.html)). |
+| **Proof-Carrying Verification Harness (PCVH)** | [`pcvh/`](../pcvh/) | **Phases 1–6 Complete** (native and isolated tests) | Zero-trust Palomar gate (12/12 red-team attacks + guillemet/metaprogramming anti-cheat), live Lean 4 LSP + bounded falsifier + best-first LSP tree search + Anthropic/OpenAI/Ollama provers + parallel wave scheduling, **8 sequential verified blueprints (`01`–`08`, 48 theorems, 6,000 Python/Rust/TS traces)**, `lean4export`+`nanoda` dual-kernel CI & Ed25519 DSSE signing, interactive `pcvh studio` workbench + [specifications monograph](../pcvh/pcvh/studio/blueprints_showcase.html), and fixed-cohort Eval-40 fixture benchmark ([Eval-40 dashboard](../pcvh/pcvh/studio/eval_dashboard.html)). |
 | **Lean 4 Windows / Low-RAM Build Orchestrator** | [`lean-build-orchestrator/`](../lean-build-orchestrator/) | **Complete** (8/8 tests) | Win32 `GetPerformanceInfo` commit-charge telemetry, comment-aware Lean import DAG + umbrella blast-radius analyzer, commit-gated topological scheduler, native `lake shake` + `.olean` fallback shaker. |
 | **Quantum-Network Entanglement & CAT(0) Checker** | [`quantum-cat0-checker/`](../quantum-cat0-checker/) | **Complete** (13/13 tests) | Exact DCP-convex CVXPY SOCP/SDP (`CLARABEL` + `SCIPY`) for Theorem C.1 Berg–Nikolaev CAT(0) cone vs. Schoenberg Euclidean SDP vs. Metric LP across 12 topologies (incl. permutation-invariant GHZ & 3-way separation on `grid_3x3`), plus `qcat0 certify` exact `Fraction` Farkas dual certificates & standalone zero-`sorry` Lean 4 proof export. |

@@ -1,0 +1,47 @@
+name: Remark N.6 Lean smoke check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'remark-n6-lean/**'
+      - '.github/workflows/remark-n6.yml'
+  pull_request:
+    paths:
+      - 'remark-n6-lean/**'
+      - '.github/workflows/remark-n6.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  remark-n6-short:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Lean 4.33.1 via elan
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o "$RUNNER_TEMP/elan-init.sh"
+          sh "$RUNNER_TEMP/elan-init.sh" -y --default-toolchain leanprover/lean4:v4.33.1
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Check out the pinned upstream source
+        run: |
+          UPSTREAM_SHA=$(python -c 'import sys; sys.path.insert(0, "remark-n6-lean"); from reproduce import UPSTREAM_SHA; print(UPSTREAM_SHA)')
+          git init "$RUNNER_TEMP/formal-math"
+          git -C "$RUNNER_TEMP/formal-math" fetch --depth=1 https://github.com/anthropics/formal-math.git "$UPSTREAM_SHA"
+          git -C "$RUNNER_TEMP/formal-math" checkout --detach FETCH_HEAD
+
+      - name: Compile the extension and check the conditional result
+        env:
+          LEAN_NUM_THREADS: '2'
+        run: python remark-n6-lean/reproduce.py "$RUNNER_TEMP/formal-math"

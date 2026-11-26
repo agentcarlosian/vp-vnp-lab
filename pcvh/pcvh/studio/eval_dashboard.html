@@ -61,18 +61,22 @@
     </div>
   </div>
 
-  <h1>40-Invariant Autonomous Verification Benchmark</h1>
+  <h1>40-Fixture Lean Verification Benchmark</h1>
   <p class="lede">
-    Live Lean&nbsp;4.33.1 evaluation across 32 sound invariants and 8 seeded defective specifications
-    spanning smart contracts, consensus protocols, compiler passes, and state machines. Kernel axioms collected: <code>Classical.choice, Quot.sound, propext</code>.
+    Fixed Lean&nbsp;4.33.1 fixture suite: 32 sound invariants and eight seeded defects.
+    Stage 2 checks all fixtures, including targeted witness probes for the BFT threshold and division associativity cases.
+    Only pre-labeled sound fixtures enter tactic-bank synthesis and the proof gate; implementation conformance is disabled.
+    Kernel axioms collected: <code>Classical.choice, Quot.sound, propext</code>.
   </p>
 
   <dl class="ledger">
     <div><dt>Sound Auto-Proved</dt><dd>32 / 32 (100%)</dd></div>
     <div><dt>Stage-2 Bug Recall</dt><dd>8 / 8 (100%)</dd></div>
-    <div><dt>False Acceptances</dt><dd>0 (0%)</dd></div>
-    <div><dt>Wall-Clock Time</dt><dd>16.9s</dd></div>
+    <div><dt>Gate False Acceptance</dt><dd>Not measured</dd></div>
+    <div><dt>Wall-Clock Time</dt><dd>16.95s</dd></div>
   </dl>
+  <p class="caption">Recorded <time>2026-11-24T17:47:32.962592+00:00</time> · Source revision:
+    <code>not recorded</code>.</p>
 
   <div class="caption">Table I — Breakdown by Engineering Domain</div>
   <table>

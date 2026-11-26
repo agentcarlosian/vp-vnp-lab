@@ -105,21 +105,21 @@ def test_phase2_falsifier_refutes_buggy_spec_before_proving(tmp_path: pathlib.Pa
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
-def test_phase3_bm25_premise_retriever_reflects_real_lean_module(tmp_path: pathlib.Path):
+def test_phase3_bm25_premise_retriever_reflects_real_lean_module(copy_blueprint):
     """Reflect real compiled `.olean` declarations and rank relevant premises with BM25."""
     # Ensure Statement.olean exists in Blueprint 4 via isolated build
-    cfg = load_spec_config(BLUEPRINT4_DIR)
+    bp = copy_blueprint(BLUEPRINT4_DIR.name)
     from pcvh.tcb.palomar_gate import _run_with_transient_oom_retry
     import os
     env = dict(os.environ, PATH=str(LOCAL_LEAN_BIN) + os.pathsep + os.environ.get("PATH", ""))
     _run_with_transient_oom_retry(
         [str(LOCAL_LEAN_BIN / LAKE_EXE_NAME), "build", "Specs.Ledger.Statement"],
-        cwd=BLUEPRINT4_DIR,
+        cwd=bp,
         env=env,
     )
 
     idx = build_premise_index_from_modules(
-        BLUEPRINT4_DIR,
+        bp,
         ["Specs.Ledger.Statement"],
         lean_bin=LOCAL_LEAN_BIN,
     )
@@ -131,24 +131,25 @@ def test_phase3_bm25_premise_retriever_reflects_real_lean_module(tmp_path: pathl
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4.33.1 toolchain missing")
-def test_phase3_autonomous_prove_blueprint3_compiler_pass_e2e():
+def test_phase3_autonomous_prove_blueprint3_compiler_pass_e2e(copy_blueprint):
     """End-to-end 7-stage autonomous `pcvh prove` on UNSOLVED Blueprint 3 (AST Peephole Optimizer)!"""
+    bp = copy_blueprint(BLUEPRINT3_DIR.name)
     # Clean any previously synthesized Solution files so this proves 100% from scratch!
-    sol_file = BLUEPRINT3_DIR / "Solution.lean"
-    sol_dir = BLUEPRINT3_DIR / "Solution"
+    sol_file = bp / "Solution.lean"
+    sol_dir = bp / "Solution"
     if sol_file.exists():
         sol_file.unlink()
     if sol_dir.exists():
         import shutil
         shutil.rmtree(sol_dir)
 
-    cfg = load_spec_config(BLUEPRINT3_DIR)
+    cfg = load_spec_config(bp)
     pin_tcb_manifest(cfg, save_snapshot=True)
 
     res = run_autonomous_prove_pipeline(
         cfg,
         lean_bin=LOCAL_LEAN_BIN,
-        attestation_out=BLUEPRINT3_DIR / "proof-attestation.json",
+        attestation_out=bp / "proof-attestation.json",
     )
     assert res.status == "VERIFIED", (
         f"Autonomous prove failed: status={res.status}\n"

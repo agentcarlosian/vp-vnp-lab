@@ -8,11 +8,12 @@ version = "0.1.0"
 description = "Agentic Proof-Carrying Verification Harness — Palomar-style zero-trust Lean 4 verification gate"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["cryptography>=42.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "cryptography>=42.0"]
-crypto = ["cryptography>=42.0"]
+dev = ["pytest>=8.0"]
+# Retain the extra for existing install commands; signing is always available.
+crypto = []
 
 [project.scripts]
 pcvh = "pcvh.cli:main"

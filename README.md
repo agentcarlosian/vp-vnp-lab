@@ -10,17 +10,17 @@ Independent Lean 4.33.1 verification, formalization of **Remark N.6**, computati
 
 ---
 
-## Headline Verification Results
+## What the evidence covers
 
-| Component | Result | Details |
-| --- | --- | --- |
-| **`vp-vnp` full local build + Remark N.6** | **323 / 323 modules + `remarkN6_unconditional` VERIFIED** | All 5 headline `Solution.*` theorems + our 891-line division-free Samuelson–Berkowitz formalization [`remark-n6-lean/RemarkN6.lean`](./remark-n6-lean/RemarkN6.lean) verified in Lean 4.33.1 on `[propext, Classical.choice, Quot.sound]` only (0 `sorry`, 0 warnings). |
-| **`pcvh` (Phases 1–6 + 8 Blueprints)** | **48 / 48 tests passing across native and Docker runs** | 12/12 red-team cheats + guillemet/metaprogramming anti-cheat, **8/8 blueprints (48 theorems, 6,000 live Python/Rust/TS traces)** Palomar-verified, Rust/TypeScript/Solidity/Python adapters (`pcvh init`), Anthropic/OpenAI/Ollama LLMs + best-first LSP tree search + parallel proving, `lean4export`+`nanoda` dual-kernel CI & Ed25519 DSSE signing, interactive `pcvh studio` Web UI, 40/40 live eval benchmark. |
-| **`lean-build-orchestrator`** | **8 / 8 tests passing** | Live Lean 4.33.1 build + native `lake shake --fix` + automatic `.olean` environment fallback + rollback safety. |
-| **`quantum-cat0-checker`** | **16 / 16 tests passing** | Exact $\sqrt{2}\times$ on $C_4$, $\sqrt{3}\times$ on $Q_3$, strict 3-way cone separations on $K_{2,3}$ & $3\times 3$ planar grid, permutation-invariant GHZ bounds, and `qcat0 certify` exact `Fraction`-verified Farkas dual certificates + standalone Lean 4 proof export. |
-| **Research experiments (`exp04`–`exp09`)** | **6 / 6 scripts passing** | Meixner–Frobenius crossing identity, Prop. E.1/M.2 `#SAT -> PERM/HC` compilers, Grassmannian Möbius contraction bound on $\mathrm{Mat}_\mu(\mathbb{F}_2)$, flat-case hub optimizer, $\mathrm{SL}_3(\mathbb{F}_2[s]/(s^2))$ coset tower, PIT & CAT(0) calculations. |
-
----
+| Result | Check or evidence |
+| --- | --- |
+| Upstream VP–VNP | The [lab report](docs/vp_vnp_lab_report.md) records a local 323-module build. That is not a CI result. |
+| Remark N.6 | [Reproduce the conditional bridge](remark-n6-lean/README.md). The full, separately documented check applies the bridge to the upstream `Solution` theorem; the report records that check locally. |
+| PCVH blueprints | [Blueprint CI](.github/workflows/ci.yml) checks eight projects. The separate main-branch dual-kernel job checks Lean and NanoDA, signs the reports and publishes the [verification bundle](pcvh/README.md#verify-a-ci-evidence-bundle). |
+| Eval-40 | [Published fixture snapshot](pcvh/eval_results_40.json): 32 of 32 sound fixtures verified and 8 of 8 seeded defects detected. This is not a conformance or dual-kernel run; false acceptance was not measured. |
+| lean-orch | [CI](.github/workflows/ci.yml) covers miniature Lean builds, with a native Windows smoke job for commit telemetry. This is not a full Mathlib performance benchmark. |
+| qcat0 | [Certificate checks](quantum-cat0-checker/README.md#interpreting-single-restriction-results) distinguish floating-point search, a rationally verified upper bound and a Lean inequality for integer edge variables under stated premises. |
+| Research experiments | Six exploratory scripts in [`experiments/`](experiments/) (exp04–exp09); not part of blueprint or formal proof CI. |
 
 ## Repository Map
 
@@ -30,8 +30,7 @@ vp-vnp-lab/
 │   ├── pcvh/                     #   tcb/ (Palomar + dual-kernel + Ed25519), adapters/, runtime/ (LSP), falsify/, agents/ (LLMs + tree search), ci/, eval/, studio/
 │   ├── blueprints/               #   01..08 (Vault/AMM, BFT, IR Opt, Ledger, CAT(0), TS Agent Guard, Rust OrderBook, ZK+Replay)
 │   ├── tests/                    #   Lean 4.33.1 integration, preflight policy and Docker verification tests
-│   ├── blueprints_showcase.html  #   Editorial 8-blueprint specification monograph
-│   ├── eval_dashboard.html       #   Interactive 40-invariant benchmark dashboard
+│   ├── pcvh/studio/              #   Packaged Studio UI, showcase and Eval-40 dashboard
 │   └── eval_results_40.json      #   Machine-readable benchmark results
 ├── lean-build-orchestrator/      # Windows/low-RAM Lean 4 commit-aware scheduler & lake shake minimizer (`lean-orch`)
 ├── quantum-cat0-checker/         # CVXPY SOCP/SDP CAT(0) quantum entanglement capacity solver (`qcat0`)
@@ -40,50 +39,44 @@ vp-vnp-lab/
 ├── scripts/                      # Topological batched Lake builder (build_lean_batched.py)
 ├── docs/                         # Full technical lab report (vp_vnp_lab_report.md)
 ├── plans/                        # Interactive HTML architecture plan (proof_carrying_verification_harness_plan.html)
-└── .github/workflows/ci.yml      # Unified GitHub Actions CI across all tools and 5 PCVH blueprints
+└── .github/workflows/ci.yml      # Tool CI, including eight PCVH blueprints and the Windows smoke job
 ```
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-- **Python 3.11+** (tested on Python 3.13) with `pytest`, `numpy`, `scipy`, `cvxpy`, `networkx`, `sympy`, `psutil`
-- **Lean 4.33.1** via [`elan`](https://github.com/leanprover/elan) (auto-detected from `PATH`, `ELAN_HOME`, `~/.elan`, or a local `.elan/` folder)
+Run the install commands from the repository root in an activated Python 3.11+ virtual environment. For example, create one with `python -m venv .venv`, then activate it with `source .venv/bin/activate` on Bash or `.venv\Scripts\Activate.ps1` in PowerShell.
 
 ### 1. Proof-Carrying Verification Harness (`pcvh`)
+
+This local example runs code from the reviewed checkout. For someone else’s candidate, use the [isolated Docker workflow](pcvh/README.md#verifying-a-candidate-checkout) instead.
+
 ```bash
-cd pcvh
-python -m pcvh verify --trusted-local blueprints/01_erc4626_vault
-python -m pcvh verify --trusted-local blueprints/02_bft_consensus
-python -m pcvh prove  blueprints/03_ssa_peephole_opt
-python -m pcvh verify --trusted-local blueprints/04_double_entry_ledger
-python -m pcvh cert-cat0 blueprints/05_cat0_certificate
-python -m pcvh verify --trusted-local blueprints/06_agent_tool_guard
-python -m pcvh verify --trusted-local blueprints/07_orderbook_matching
-python -m pcvh verify --trusted-local blueprints/08_zk_and_replay_window
-python -m pcvh studio --trusted-local --root .
-python -m pytest -v tests/
+python -m pip install "./pcvh[dev]"
+pcvh verify --trusted-local pcvh/blueprints/01_erc4626_vault
+pcvh studio --trusted-local --root pcvh
 ```
 
-### 2. Lean 4 Commit-Aware Build Orchestrator (`lean-orch`)
+Proof commands use Lean 4.33.1 (install via [elan](https://github.com/leanprover/elan)); the TypeScript and Rust blueprints additionally use Node.js 24 and Rust/Cargo respectively. The local Studio runs on loopback by default.
+
+### 2. Lean build orchestrator (`lean-orch`)
+
 ```bash
-cd lean-build-orchestrator
-python -m lean_orch audit /path/to/lean-project
-python -m lean_orch build /path/to/lean-project --reserve-gb 3.0
-python -m lean_orch shake /path/to/lean-project --fix
-python -m pytest -v tests/
+python -m pip install "./lean-build-orchestrator[dev]"
+lean-orch audit /path/to/lean-project
 ```
 
-### 3. Quantum-Network CAT(0) Capacity Checker (`qcat0`)
+The audit is read-only. Building and applying import fixes require the project’s Lean/Lake toolchain. See the [full lean-orch quickstart](lean-build-orchestrator/README.md#quick-start).
+
+### 3. Quantum-network CAT(0) capacity checker (`qcat0`)
+
 ```bash
-cd quantum-cat0-checker
-python -m quantum_cat0 list
-python -m quantum_cat0 check K23_bipartite
-python -m quantum_cat0 certify hypercube_Q3 --lean-out Q3Cert.lean
-python -m quantum_cat0 benchmark
-python -m pytest -v tests/
+python -m pip install "./quantum-cat0-checker[dev]"
+qcat0 check C4_crossing
 ```
+
+Lean is only needed to check an exported Lean certificate, not for this numerical check. See the [qcat0 quickstart](quantum-cat0-checker/README.md#quick-start).
 
 ### 4. Remark N.6 Lean 4 Formalization & Research Report
 - See [`remark-n6-lean/README.md`](./remark-n6-lean/README.md) to reproduce `RemarkN6.lean` and `CheckFullVerification.lean` against `anthropics/formal-math/vp-vnp`.

@@ -1,4 +1,4 @@
-"""Zero-dependency local HTTP Studio server for PCVH (`pcvh studio`).
+"""Local HTTP Studio server for PCVH (`pcvh studio`).
 
 Provides a clean JSON REST API, asynchronous job runner (verify / prove / diff-reprove /
 falsify / pin / init), live Lean 4 LSP `$/lean/plainGoal` queries, and Ed25519 DSSE
@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from importlib.resources import files
 import json
 import pathlib
 import sys
@@ -36,6 +37,15 @@ from ..tcb.crypto import (
 )
 from ..tcb.manifest import LOCK_FILENAME, pin_tcb_manifest, verify_tcb_manifest
 from ..tcb.palomar_gate import resolve_lean_bin, run_palomar_gate
+
+_STUDIO_PAGES = {
+    "/": "ui.html",
+    "/index.html": "ui.html",
+    "/showcase": "blueprints_showcase.html",
+    "/showcase/": "blueprints_showcase.html",
+    "/eval": "eval_dashboard.html",
+    "/eval/": "eval_dashboard.html",
+}
 
 _SKIP_SCAN_DIRS = {
     ".git",
@@ -89,10 +99,9 @@ class StudioState:
         self._lock = threading.Lock()
         self._jobs: Dict[str, StudioJob] = {}
         self._lsp_pool: Dict[str, tuple[LeanLSPClient, threading.Lock]] = {}
-        self._ui_html_path = pathlib.Path(__file__).resolve().parent / "ui.html"
 
     def get_ui_html(self) -> str:
-        return self._ui_html_path.read_text(encoding="utf-8")
+        return files(__package__).joinpath("ui.html").read_text(encoding="utf-8")
 
     def close_project_lsp(self, project_id: str) -> None:
         with self._lock:
@@ -524,8 +533,8 @@ class _StudioHandler(BaseHTTPRequestHandler):
         st = self.server.studio_state
 
         try:
-            if parsed.path in ("/", "/index.html"):
-                body = st.get_ui_html().encode("utf-8")
+            if page := _STUDIO_PAGES.get(parsed.path):
+                body = files(__package__).joinpath(page).read_bytes()
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
@@ -533,30 +542,6 @@ class _StudioHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(body)
                 return
-
-            if parsed.path in ("/showcase", "/showcase/"):
-                showcase_fp = pathlib.Path(__file__).resolve().parents[2] / "blueprints_showcase.html"
-                if showcase_fp.exists():
-                    body = showcase_fp.read_bytes()
-                    self.send_response(HTTPStatus.OK)
-                    self.send_header("Content-Type", "text/html; charset=utf-8")
-                    self.send_header("Content-Length", str(len(body)))
-                    self.send_header("Cache-Control", "no-store")
-                    self.end_headers()
-                    self.wfile.write(body)
-                    return
-
-            if parsed.path in ("/eval", "/eval/"):
-                eval_fp = pathlib.Path(__file__).resolve().parents[2] / "eval_dashboard.html"
-                if eval_fp.exists():
-                    body = eval_fp.read_bytes()
-                    self.send_response(HTTPStatus.OK)
-                    self.send_header("Content-Type", "text/html; charset=utf-8")
-                    self.send_header("Content-Length", str(len(body)))
-                    self.send_header("Cache-Control", "no-store")
-                    self.end_headers()
-                    self.wfile.write(body)
-                    return
 
             if parsed.path == "/api/overview":
                 self._send_json(HTTPStatus.OK, st.get_overview())

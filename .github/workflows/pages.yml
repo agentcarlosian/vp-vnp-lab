@@ -27,9 +27,9 @@ jobs:
       - name: Assemble static monograph bundle
         run: |
           mkdir -p _site/showcase _site/eval
-          cp pcvh/blueprints_showcase.html _site/index.html
-          cp pcvh/blueprints_showcase.html _site/showcase/index.html
-          cp pcvh/eval_dashboard.html _site/eval/index.html
+          cp pcvh/pcvh/studio/blueprints_showcase.html _site/index.html
+          cp pcvh/pcvh/studio/blueprints_showcase.html _site/showcase/index.html
+          cp pcvh/pcvh/studio/eval_dashboard.html _site/eval/index.html
           touch _site/.nojekyll
 
       - name: Upload Pages artifact

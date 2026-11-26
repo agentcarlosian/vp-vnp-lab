@@ -43,10 +43,16 @@ class MemorySnapshot:
     page_size_bytes: int
     process_count: int
     source: str
+    overcommit_headroom_gb: Optional[float] = None
 
     @property
     def commit_avail_gb(self) -> float:
         return max(0.0, self.commit_limit_gb - self.commit_total_gb)
+
+    @property
+    def scheduler_headroom_gb(self) -> float:
+        """Use physical/swap headroom when Linux does not enforce CommitLimit."""
+        return self.commit_avail_gb if self.overcommit_headroom_gb is None else self.overcommit_headroom_gb
 
     @property
     def commit_utilization_pct(self) -> float:
@@ -62,6 +68,7 @@ class MemorySnapshot:
             "commit_total_gb": round(self.commit_total_gb, 3),
             "commit_limit_gb": round(self.commit_limit_gb, 3),
             "commit_avail_gb": round(self.commit_avail_gb, 3),
+            "scheduler_headroom_gb": round(self.scheduler_headroom_gb, 3),
             "commit_peak_gb": round(self.commit_peak_gb, 3),
             "commit_utilization_pct": round(self.commit_utilization_pct, 2),
             "page_size_bytes": self.page_size_bytes,
@@ -70,11 +77,15 @@ class MemorySnapshot:
         }
 
     def format_human(self) -> str:
+        estimate = (
+            f" | scheduler headroom estimate {self.scheduler_headroom_gb:.2f} GB"
+            if self.overcommit_headroom_gb is not None else ""
+        )
         return (
             f"RAM {self.physical_avail_gb:.2f}/{self.physical_total_gb:.2f} GB free | "
             f"Commit {self.commit_total_gb:.2f}/{self.commit_limit_gb:.2f} GB used "
             f"(avail {self.commit_avail_gb:.2f} GB, peak {self.commit_peak_gb:.2f} GB, "
-            f"{self.commit_utilization_pct:.1f}%) [{self.source}]"
+            f"{self.commit_utilization_pct:.1f}%) [{self.source}]{estimate}"
         )
 
 
@@ -115,6 +126,14 @@ def get_memory_snapshot() -> MemorySnapshot:
             swap_tot = kv.get("SwapTotal", 0.0)
             commit_lim = kv.get("CommitLimit", phys_tot + swap_tot)
             commit_tot = kv.get("Committed_AS", phys_tot - phys_av)
+            try:
+                policy = pathlib.Path("/proc/sys/vm/overcommit_memory").read_text().strip()
+            except OSError:
+                policy = ""
+            # In heuristic/always-overcommit modes Committed_AS may exceed
+            # CommitLimit. Preserve those raw counters for audit, but use the
+            # available memory and swap as an admission estimate.
+            headroom = max(0.0, phys_av + kv.get("SwapFree", 0.0)) if policy in {"0", "1"} else None
             return MemorySnapshot(
                 platform=sys.platform,
                 physical_total_gb=phys_tot,
@@ -125,6 +144,7 @@ def get_memory_snapshot() -> MemorySnapshot:
                 page_size_bytes=4096,
                 process_count=0,
                 source="linux:/proc/meminfo",
+                overcommit_headroom_gb=headroom,
             )
         except Exception:
             pass

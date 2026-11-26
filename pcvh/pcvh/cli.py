@@ -258,6 +258,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
         lean_bin=args.lean_bin,
         out_json=args.out_json,
         out_html=args.out_html,
+        source_revision=args.source_revision,
     )
     if args.as_json:
         print(json.dumps(res.to_dict(), indent=2))
@@ -265,9 +266,9 @@ def cmd_eval(args: argparse.Namespace) -> int:
         print("=== PCVH 40-Invariant Engineering Eval Benchmark ===")
         print(f"Sound Verified: {res.sound_palomar_verified}/{res.sound_tasks} ({res.sound_auto_prove_pct:.1f}%)")
         print(f"Buggy Caught:   {res.buggy_caught_stage2}/{res.buggy_tasks} ({res.falsification_recall_pct:.1f}% Stage-2 recall)")
-        print(f"False Accepts:  {res.false_acceptance_count} (0%)")
+        print("Gate false acceptance: not measured (only pre-labeled sound fixtures enter the gate)")
         print(f"Axioms Used:    {res.axioms_used}")
-        print(f"Duration:       {res.total_duration_s:.1f}s")
+        print(f"Duration:       {res.total_duration_s:.2f}s")
         for dom, st in res.per_domain.items():
             print(f"  - {dom:<16}: sound={st['sound_verified']}/{st['sound_total']} | buggy_caught={st['buggy_caught']}/{st['buggy_total']}")
         if args.out_html:
@@ -367,6 +368,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_evl.add_argument("--lean-bin", type=pathlib.Path, default=None)
     p_evl.add_argument("--out-json", type=pathlib.Path, default=None)
     p_evl.add_argument("--out-html", type=pathlib.Path, default=None)
+    p_evl.add_argument("--source-revision", help="Optional caller-supplied source provenance for the report")
     p_evl.add_argument("--json", action="store_true", dest="as_json")
     p_evl.set_defaults(func=cmd_eval)
 
