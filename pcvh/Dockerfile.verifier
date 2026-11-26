@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS node
+FROM node:25-bookworm-slim AS node
 FROM rust:1-bookworm AS rust
 
 FROM python:3.13-slim-bookworm
