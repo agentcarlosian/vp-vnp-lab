@@ -241,3 +241,36 @@ def test_two_party_singleton_cut_supplies_an_impossibility_witness():
     net = QuantumNetwork("two", 2, {(0, 1): 1}, {(0, 1): 2})
     result = check_slocc_feasibility(net, run_covering_analysis=False)
     assert (result.verdict, result.min_cut_ratio, result.worst_cut_partition) == ("FORBIDDEN_BY_CUT", 0.5, [0])
+
+@pytest.mark.parametrize("factor", [0.00001, 1, 1000])
+def test_k23_verdict_is_independent_of_rate_units(factor):
+    instance = get_topology("K23_bipartite")
+    scaled = QuantumNetwork("scaled", instance.num_parties,
+                            {e: v * factor for e, v in instance.source_eprs.items()},
+                            {e: v * factor for e, v in instance.target_eprs.items()})
+    result = check_slocc_feasibility(scaled, run_covering_analysis=False)
+    assert result.verdict == "METRIC_LP_GAP"
+    assert result.cat0_candidate_ratio == pytest.approx(1.0, abs=1e-4)
+    assert result.min_cut_ratio == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("factor", [1e-8, 1, 1000])
+def test_single_edge_cover_comparison_uses_relative_precision(factor):
+    for demand, expected in ((2, False), (1, None), (0.5, True)):
+        net = QuantumNetwork("edge", 2, {(0, 1): factor}, {(0, 1): demand * factor})
+        result = check_slocc_feasibility(net)
+        assert result.covering_ebit_budget_cat0 == pytest.approx(demand * factor, rel=1e-5)
+        assert result.covering_feasible_with_l2_cover is expected
+
+def test_unresolved_conic_solution_leaves_covering_comparison_unknown():
+    from dataclasses import replace
+    net = QuantumNetwork("edge", 2, {(0, 1): 1}, {(0, 1): 0.5})
+    estimate = replace(solve_covering_capacity_hierarchy(net), cat0_solver_converged=False)
+    assert check_slocc_feasibility(net, precomputed_covering=estimate).covering_feasible_with_l2_cover is None
+
+@pytest.mark.parametrize("unit", [1e-6, 1, 1e6])
+def test_metric_audit_verdict_is_independent_of_distance_units(unit):
+    distances = np.array([[0, 1, 2, 1], [1, 0, 1, 2], [2, 1, 0, 1], [1, 2, 1, 0]], dtype=float)
+    audit = audit_metric_cat0(distances * unit)
+    assert audit.is_valid_metric and not audit.is_cat0_4pt and not audit.is_euclidean_embeddable
+    assert audit.max_berg_nikolaev_violation / unit**2 == pytest.approx(4)

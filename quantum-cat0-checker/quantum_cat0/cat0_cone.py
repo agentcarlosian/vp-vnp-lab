@@ -126,8 +126,14 @@ def audit_metric_cat0(D: np.ndarray, tol: float = 1e-6, compute_projections: boo
     if D.ndim != 2 or D.shape[0] != D.shape[1]:
         raise ValueError("Distance matrix D must be square (n x n)")
     n = D.shape[0]
-    D = 0.5 * (D + D.T)
+    if not n or not np.isfinite(D).all():
+        raise ValueError("Distance matrix must be nonempty and finite")
+    D = 0.5 * D + 0.5 * D.T
     np.fill_diagonal(D, 0.0)
+    # Triangle residuals have distance units; four-point and Gram residuals
+    # have squared-distance units. Apply tol on a common dimensionless scale.
+    unit = float(np.max(np.abs(D))) or 1.0
+    D = D / unit
 
     # 1. Triangle inequality check
     max_tri = 0.0
@@ -168,20 +174,21 @@ def audit_metric_cat0(D: np.ndarray, tol: float = 1e-6, compute_projections: boo
     cat0_dist = None
     euc_dist = None
     if compute_projections and n >= 3:
-        D_cat0, cat0_dist = project_onto_cat0_socp(D)
-        _ = D_cat0
+        _, cat0_dist = project_onto_cat0_socp(D)
         _, euc_dist = project_onto_euclidean_sdp(D)
+        cat0_dist *= unit
+        euc_dist *= unit
 
     return MetricAuditResult(
         num_points=n,
         is_valid_metric=(max_tri <= tol),
-        max_triangle_violation=max_tri,
+        max_triangle_violation=max_tri * unit,
         is_cat0_4pt=(max_tri <= tol and max_bn <= tol),
-        max_berg_nikolaev_violation=max_bn,
+        max_berg_nikolaev_violation=max_bn * unit * unit,
         worst_quadruple=worst_q,
-        max_enflo_violation=max_enflo,
+        max_enflo_violation=max_enflo * unit * unit,
         is_euclidean_embeddable=(max_tri <= tol and min_eig >= -tol),
-        min_gram_eigenvalue=min_eig,
+        min_gram_eigenvalue=min_eig * unit * unit,
         cat0_projection_frobenius_dist=cat0_dist,
         euclidean_projection_frobenius_dist=euc_dist,
     )
