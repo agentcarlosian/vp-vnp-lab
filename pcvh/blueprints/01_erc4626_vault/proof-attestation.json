@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-25T03:04:00.660120+00:00",
+  "timestamp_utc": "2026-11-28T16:34:22.340029+00:00",
   "spec_name": "blueprint01-erc4626-vault-amm",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "606ead86b2418b16bf8d37be64b21b10b3dc3d563571a7781bec5681ebc4abbf",
+  "spec_bundle_sha256": "8e4b89a762516100841321f95475d6b79d227d2d516d2038578a04fce4a9d7f6",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "amm_swap_never_drains_reserve",
@@ -29,6 +29,6 @@
     "differential_conformance": "PASS (1000/1000 DeFi AMM+Vault differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 13.793,
-  "attestation_sha256": "21ce3dfcc9b4e87bb92a0a6e3efafcc4702979307a42a43b2264f50e96301882"
+  "duration_s": 17.215,
+  "attestation_sha256": "6f7d714964130630bebf7683976234f5f6ec06ceb99bb959e520936227157af7"
 }

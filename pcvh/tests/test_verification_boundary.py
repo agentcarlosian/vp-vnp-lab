@@ -100,9 +100,76 @@ def test_isolated_blueprint_and_independent_pin(project):
     result = verify_isolated(project, image=image, expected_digest=reviewed.spec_bundle_sha256)
     assert result["verdict"] == "VERIFIED", result["failure_reasons"]
     assert "1000/1000" in result["checks"]["differential_conformance"]
+    production = project / "prod_vault.py"
+    original = production.read_bytes()
+    production.write_text("# Implementation unavailable", encoding="utf-8")
+    rejected = verify_isolated(project, image=image, expected_digest=reviewed.spec_bundle_sha256)
+    assert rejected["verdict"] == "REJECTED"
+    assert rejected["checks"]["differential_conformance"].startswith("FAIL")
+    proof_only = verify_isolated(project, image=image, expected_digest=reviewed.spec_bundle_sha256,
+                                 conformance=False)
+    assert proof_only["verdict"] == "VERIFIED"
+    assert proof_only["checks"]["differential_conformance"] == "SKIPPED_BY_REQUEST"
+    production.write_bytes(original)
     policy = project / "pcvh.toml"
     policy.write_text(policy.read_text() + "\n# revised policy\n")
     pin_tcb_manifest(load_spec_config(project))
     rejected = verify_isolated(project, image=image, expected_digest=reviewed.spec_bundle_sha256)
     assert rejected["verdict"] == "REJECTED"
     assert "lean_kernel_build" not in rejected["checks"]
+
+
+def test_conformance_requires_every_reviewed_case_in_order():
+    import hashlib
+    from types import SimpleNamespace
+    from pcvh.tcb.conformance import check_transcript
+
+    expected = b"first|1\nsecond|2\n"
+    cfg = SimpleNamespace(conformance_traces=2, conformance_sha256=hashlib.sha256(expected).hexdigest())
+    assert check_transcript(cfg, expected.replace(b"\n", b"\r\n")) == expected
+    for incomplete in (b"", b"2/2 test cases passed\n", b"first|1\n", b"first|1\nfirst|1\n",
+                       b"second|2\nfirst|1\n", b"first|1\nsecond|3\n", expected + b"extra|3\n"):
+        with pytest.raises(ValueError):
+            check_transcript(cfg, incomplete)
+
+
+def test_studio_keeps_signing_material_outside_served_projects(project, tmp_path, monkeypatch):
+    from pcvh.studio.server import StudioState
+    state = StudioState(project)
+    monkeypatch.setenv("PCVH_STUDIO_KEY_DIR", str(tmp_path / "user-keys"))
+    legacy = project / ".pcvh_studio_keys"
+    legacy.mkdir()
+    (legacy / "pcvh_signing.key.pem").write_text("old private fixture")
+    signed = state.sign_project_attestation(".")
+    assert state.verify_project_signature(".", signed["public_key_pem"])["ok"]
+    assert state.sign_project_attestation(".")["key_id"] == signed["key_id"]
+    assert len(list((tmp_path / "user-keys").rglob("*.key.pem"))) == 1
+    assert state.read_project_file(".", "Solution.lean")
+    for private in (".pcvh_studio_keys/pcvh_signing.key.pem", "pcvh_signing.key.pem", ".git/config"):
+        with pytest.raises(ValueError):
+            state.read_project_file(".", private)
+        with pytest.raises(ValueError):
+            state.save_project_file(".", private, "fixture")
+    assert ".pcvh_studio_keys/pcvh_signing.key.pem" not in state.get_project_detail(".")["files"]
+    monkeypatch.setenv("PCVH_STUDIO_KEY_DIR", str(project / "keys"))
+    with pytest.raises(ValueError, match="outside"):
+        state.sign_project_attestation(".")
+
+def test_reviewed_digest_alone_does_not_pass_lean_oracle(project, tmp_path):
+    import hashlib
+    from tests._lean_env import detect_lean_bin
+    from pcvh.tcb.conformance import replay, stage_oracle
+
+    tools = detect_lean_bin(project)
+    if tools is None:
+        pytest.skip("Lean 4 toolchain missing")
+    policy = load_spec_config(project)
+    oracle = tmp_path / "oracle"
+    stage_oracle(project, verify_tcb_manifest(policy), oracle)
+    assert not (oracle / "prod_vault.py").exists()
+    cfg = load_spec_config(oracle)
+    data = b"10|10|0|0|0|0|10|10|0|0|0\n"
+    cfg.conformance_traces = 1
+    cfg.conformance_sha256 = hashlib.sha256(data).hexdigest()
+    with pytest.raises(ValueError, match="MISMATCH"):
+        replay(cfg, data, tools)

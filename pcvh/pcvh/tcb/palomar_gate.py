@@ -16,6 +16,7 @@ import time
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from ..config import SpecConfig, load_spec_config
+from . import conformance
 from .crypto import sign_attestation_ed25519
 from .dual_kernel import run_dual_kernel_verification
 from .manifest import (
@@ -427,32 +428,20 @@ def run_palomar_gate(
             checks["external_second_kernel"] = f"FAIL [{dk_res.backend}] ({dk_res.detail})"
             failures.append(f"Independent second kernel failed: {dk_res.detail}")
 
-        # 8. Optional Differential Conformance Bridge (Lean model <-> production implementation)
+        # 8. Differential conformance evidence for the reviewed, ordered cases.
+        if cfg.conformance_command and not run_conformance:
+            checks["differential_conformance"] = "SKIPPED_BY_REQUEST"
         if not failures and run_conformance and cfg.conformance_command:
-            conf_env = env.copy()
-            conf_env["PCVH_OVERLAY_WS"] = str(ws)
-            conf_env["PCVH_LEAN_BIN"] = str(lean_bin_dir)
-            conf_proc = subprocess.run(
-                cfg.conformance_command,
-                shell=True,
-                cwd=str(ws),
-                env=conf_env,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            conf_out = (conf_proc.stdout or "") + ("\n" + conf_proc.stderr if conf_proc.stderr else "")
-            raw_logs["differential_conformance"] = conf_out
-            if conf_proc.returncode == 0:
-                summary_line = next(
-                    (ln.strip() for ln in reversed(conf_out.splitlines()) if ln.strip()),
-                    "PASS",
-                )
-                checks["differential_conformance"] = f"PASS ({summary_line})"
-            else:
-                checks["differential_conformance"] = f"FAIL (rc={conf_proc.returncode})"
-                failures.append(f"Differential conformance failed: {conf_out.strip()[-600:]}")
+            try:
+                conformance.check_policy(cfg)
+                oracle = pathlib.Path(tmp) / "oracle"
+                conformance.stage_oracle(original_root, man, oracle)
+                records = conformance.produce(cfg, lean_bin_dir)
+                summary = conformance.replay(load_spec_config(oracle), records, lean_bin_dir)
+                checks["differential_conformance"] = f"PASS ({summary})"
+            except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                checks["differential_conformance"] = f"FAIL ({exc})"
+                failures.append(f"Differential conformance failed: {exc}")
 
     if sign_key_path is not None:
         checks["cryptographic_signature"] = "PENDING (Ed25519-DSSEv1)"

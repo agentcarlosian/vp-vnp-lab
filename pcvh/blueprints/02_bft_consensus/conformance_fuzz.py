@@ -41,48 +41,7 @@ def _resolve_lean_bin(start: pathlib.Path) -> str:
         return str(pathlib.Path(w).parent)
     raise FileNotFoundError("Could not locate Lean 4 `lake` binary; set PCVH_LEAN_BIN or install via elan.")
 
-_LEAN_RUNNER = r"""
-import Specs.Bft.Statement
-open BftProto
-
-def pNat! (s : String) : Nat := s.trimAscii.toString.toNat!
-
-def parseSide (s : String) : Side := if s == "L" then Side.left else Side.right
-
-def parseVotes (s : String) : List ValidatorVote :=
-  if s.trimAscii.isEmpty then []
-  else (s.splitOn ";").map fun item =>
-    match item.splitOn "," with
-    | [b, q1, q2] =>
-      { isByz := b == "1", inQ1 := q1 == "1", inQ2 := q2 == "1", vote1 := none, vote2 := none }
-    | _ => { isByz := false, inQ1 := false, inQ2 := false, vote1 := none, vote2 := none }
-
-#eval do
-  let raw ← IO.FS.readFile "{DATA_FILE}"
-  let lines := (raw.splitOn "\n").filter (fun (l : String) => !l.trimAscii.isEmpty)
-  let mut ok : Nat := 0
-  for line in lines do
-    match line.splitOn "|" with
-    | [sVotes, expF, expQ1, expQ2, sLeaves, sDirs, expLeaf, expRoot] =>
-      let vs := parseVotes sVotes
-      if countByz vs != pNat! expF || countQ1 vs != pNat! expQ1 || countQ2 vs != pNat! expQ2 then
-        throw (IO.userError s!"BFT count mismatch at {ok}")
-      let ls := (sLeaves.splitOn ",").map pNat!
-      match ls with
-      | [a, b, c, d] =>
-        let tree := MerkleTree.node (MerkleTree.node (.leaf a) (.leaf b)) (MerkleTree.node (.leaf c) (.leaf d))
-        let dirs := (sDirs.splitOn ",").map parseSide
-        match buildMerkleProof demoHash tree dirs with
-        | some (v, pf) =>
-          let r := verifyMerkle demoHash v pf
-          if v != pNat! expLeaf || r != pNat! expRoot || r != merkleRoot demoHash tree then
-            throw (IO.userError s!"Merkle mismatch at {ok}")
-        | none => throw (IO.userError s!"buildMerkleProof returned none at {ok}")
-      | _ => throw (IO.userError "Expected 4 leaves")
-      ok := ok + 1
-    | _ => throw (IO.userError s!"Malformed line: {line}")
-  IO.println s!"{ok}/{lines.length} BFT+Merkle differential traces matched bit-for-bit"
-"""
+_LEAN_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 
 
 def main() -> int:
@@ -124,6 +83,10 @@ def main() -> int:
         s_leaves = ",".join(str(x) for x in leaves)
         s_dirs = ",".join(dirs)
         rows.append(f"{s_votes}|{f}|{q1}|{q2}|{s_leaves}|{s_dirs}|{v}|{root}")
+
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write("\n".join(rows) + "\n")
+        return 0
 
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write("\n".join(rows) + "\n")

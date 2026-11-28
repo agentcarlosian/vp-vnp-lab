@@ -88,58 +88,7 @@ def encode_trace_line(
     return f"{s_init}|{s_evs}|{s_expb}|{s_expk}"
 
 
-_LEAN_CONFORMANCE_RUNNER = r"""
-import Specs.Ledger.Statement
-open Ledger
-
-def accts : List Nat := [1, 2, 3, 4, 99]
-
-def parseNat! (s : String) : Nat := s.trimAscii.toString.toNat!
-def parseInt! (s : String) : Int := s.trimAscii.toString.toInt!
-
-def parseInit (s : String) : Balances :=
-  if s.trimAscii.isEmpty then []
-  else (s.splitOn ",").map fun pair =>
-    match pair.splitOn ":" with
-    | [a, b] => (parseNat! a, parseInt! b)
-    | _ => (0, 0)
-
-def parseEvents (s : String) : List TransferEvent :=
-  if s.trimAscii.isEmpty then []
-  else (s.splitOn ";").map fun ev =>
-    match ev.splitOn ":" with
-    | [k, f, t, fe, amt, fee] =>
-      { idKey := parseNat! k, fromAcct := parseNat! f, toAcct := parseNat! t,
-        feeAcct := parseNat! fe, amount := parseNat! amt, fee := parseNat! fee }
-    | _ => { idKey := 0, fromAcct := 0, toAcct := 0, feeAcct := 0, amount := 0, fee := 0 }
-
-def parseInts (s : String) : List Int :=
-  if s.trimAscii.isEmpty then [] else (s.splitOn ",").map parseInt!
-
-def parseNats (s : String) : List Nat :=
-  if s.trimAscii.isEmpty then [] else (s.splitOn ",").map parseNat!
-
-#eval do
-  let raw ← IO.FS.readFile "{DATA_FILE}"
-  let lines := (raw.splitOn "\n").filter (fun (l : String) => !l.trimAscii.isEmpty)
-  let mut okCount : Nat := 0
-  for line in lines do
-    match line.splitOn "|" with
-    | [sInit, sEvs, sExpB, sExpK] =>
-      let initB := parseInit sInit
-      let evs := parseEvents sEvs
-      let expB := parseInts sExpB
-      let expK := parseNats sExpK
-      let s1 := execTrace { balances := initB, seenKeys := [] } evs
-      let gotB := accts.map (lookupBalance s1.balances)
-      let gotK := s1.seenKeys.mergeSort (· ≤ ·)
-      if gotB != expB || gotK != expK then
-        throw (IO.userError s!"MISMATCH at trace {okCount}: gotB={gotB} expB={expB} gotK={gotK} expK={expK}")
-      okCount := okCount + 1
-    | _ =>
-      throw (IO.userError s!"Malformed trace line: {line}")
-  IO.println s!"{okCount}/{lines.length} differential traces matched bit-for-bit"
-"""
+_LEAN_CONFORMANCE_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 
 
 def main() -> int:
@@ -169,6 +118,10 @@ def main() -> int:
         exp_bals = [led.balance_of(a) for a in ACCOUNTS]
         exp_keys = sorted(led.seen_keys)
         lines.append(encode_trace_line(init_bals, events, exp_bals, exp_keys))
+
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write("\n".join(lines) + "\n")
+        return 0
 
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write("\n".join(lines) + "\n")

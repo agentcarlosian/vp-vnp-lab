@@ -17,4 +17,6 @@ lean_samples = 64
 forbid_umbrella_imports = ["Mathlib", "Mathlib.Tactic", "Mathlib.All"]
 
 [conformance]
+traces = 1000
+transcript_sha256 = "1a4b4e93e2041a282193731a9938f42b08e5d18678a7813c24e64de188f1162d"
 command = "python conformance_fuzz.py --traces 1000"

@@ -10,46 +10,7 @@ import subprocess
 import sys
 import tempfile
 
-_LEAN_RUNNER = r"""
-import Specs.AgentGuard.Statement
-open AgentGuard
-
-def pNat! (s : String) : Nat := s.trimAscii.toString.toNat!
-
-def parseCall (tok : String) : IO ToolCall :=
-  match tok.splitOn ":" with
-  | [sScope, sTrav, sDest, sApp, sCost, sKill] =>
-    pure { scopeId := pNat! sScope,
-           isPathTraversal := pNat! sTrav == 1,
-           isDestructive := pNat! sDest == 1,
-           hasHumanApproval := pNat! sApp == 1,
-           costCents := pNat! sCost,
-           tripKillSwitch := pNat! sKill == 1 }
-  | _ => throw (IO.userError s!"Malformed call: {tok}")
-
-#eval do
-  let raw ← IO.FS.readFile "{DATA_FILE}"
-  let lines : List String := (raw.splitOn "\n").map (fun (s : String) => s.trimAscii.toString) |>.filter (fun (s : String) => !s.isEmpty)
-  let mut ok := 0
-  for line in lines do
-    match line.splitOn "|" with
-    | [sBud, sMaxC, sScope, sCalls, sExpDecs, sExpSpent, sExpCnt, sExpHalt] =>
-      let pol : Policy := { maxBudgetCents := pNat! sBud, maxCalls := pNat! sMaxC, allowedScopeId := pNat! sScope }
-      let calls ← (sCalls.splitOn ",").mapM parseCall
-      let expDecs : List Nat := (sExpDecs.splitOn ",").map pNat!
-      let mut st : GuardState := { spentCents := 0, callCount := 0, halted := false }
-      let mut decs : List Nat := []
-      for c in calls do
-        let (d, st') := evalToolCall pol st c
-        st := st'
-        decs := decs ++ [d.code]
-      let sf := execTrace pol { spentCents := 0, callCount := 0, halted := false } calls
-      if decs != expDecs || st != sf || sf.spentCents != pNat! sExpSpent || sf.callCount != pNat! sExpCnt || sf.halted != (pNat! sExpHalt == 1) then
-        throw (IO.userError s!"AGENT GUARD MISMATCH at trace {ok}")
-      ok := ok + 1
-    | _ => throw (IO.userError s!"Malformed row: {line}")
-  IO.println s!"{ok}/{lines.length} TypeScript AI Agent Guardrail 12-step traces matched bit-for-bit"
-"""
+_LEAN_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 
 
 def _resolve_lean_bin(start: pathlib.Path) -> str:
@@ -108,6 +69,10 @@ def main() -> int:
     lake_exe = os.path.join(lean_bin, "lake.exe" if os.name == "nt" else "lake")
     env = os.environ.copy()
     env["PATH"] = lean_bin + os.pathsep + env.get("PATH", "")
+
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write(ts_proc.stdout)
+        return 0
 
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write(ts_proc.stdout)

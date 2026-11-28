@@ -1,14 +1,15 @@
 {
   "schema": "pcvh.spec-lock.v2",
   "name": "blueprint08-zk-gadgets-and-replay-window",
-  "pinned_at": "2026-11-25T02:48:14.843027+00:00",
-  "spec_bundle_sha256": "6052290d01aa0535e1ea43ea495b7207edf167d6659375f8998e60322e19bd9b",
+  "pinned_at": "2026-11-28T16:28:36.945052+00:00",
+  "spec_bundle_sha256": "17a3b66e01e688d8c43034263ba644ec26b43c7d04cdcb0548e4ead53172a457",
   "files": {
-    "pcvh.toml": "a30ebbb979b07f1f1470d5036775d8cdab478b886df6c40bbe7fe80f3b3dabd1",
+    "pcvh.toml": "60f72e1dc2b37a0f9b07cc6b66ccdfa76fac58983e8407bd42c99ae40b5e6782",
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
     "Specs/ZkReplay/Statement.lean": "b84a7589bff45834383de6d9bc064c066b2446c363992fc70c8c9b05309814b4",
     "Specs/ZkReplay/Challenge.lean": "8c81249226ad376dd7e760097aee22573d3bf686959542230f20a4a70bd692bd",
     "lakefile.toml": "c93120e1512bedf2dd54b4e01a813700795c1c36547485853895fe6f12846a76",
-    "conformance_fuzz.py": "e99fd79bb6e545abcc6d0c25af7f2f063e951fa7b7000f0fabb5566120fa86d6"
+    "conformance_fuzz.py": "9f73f9a4bae3fb3c5bb60e118fe99c0ab01d45a0fd4e315c3a16e451f736ae33",
+    "conformance-oracle.lean.in": "8ddc10340afcf652174244c2de1936cf52f5c61e0f03ab157c8c6cd0e18d6c67"
   }
 }

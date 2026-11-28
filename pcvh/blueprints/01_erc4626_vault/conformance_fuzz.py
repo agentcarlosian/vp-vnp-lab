@@ -41,29 +41,7 @@ def _resolve_lean_bin(start: pathlib.Path) -> str:
         return str(pathlib.Path(w).parent)
     raise FileNotFoundError("Could not locate Lean 4 `lake` binary; set PCVH_LEAN_BIN or install via elan.")
 
-_LEAN_RUNNER = r"""
-import Specs.Vault.Statement
-open DeFi
-
-def pNat! (s : String) : Nat := s.trimAscii.toString.toNat!
-
-#eval do
-  let raw ← IO.FS.readFile "{DATA_FILE}"
-  let lines := (raw.splitOn "\n").filter (fun (l : String) => !l.trimAscii.isEmpty)
-  let mut ok : Nat := 0
-  for line in lines do
-    match line.splitOn "|" with
-    | [sx, sy, sdx, sexpRx, sexpRy, sexpDy, sA, sS, sdA, sexpM, sexpOut] =>
-      let (p1, dy) := ammSwapXForY { reserveX := pNat! sx, reserveY := pNat! sy } (pNat! sdx)
-      let (v1, minted) := vaultDeposit { totalAssets := pNat! sA, totalShares := pNat! sS } (pNat! sdA)
-      let (_, out) := vaultRedeem v1 minted
-      if p1.reserveX != pNat! sexpRx || p1.reserveY != pNat! sexpRy || dy != pNat! sexpDy
-         || minted != pNat! sexpM || out != pNat! sexpOut then
-        throw (IO.userError s!"MISMATCH at case {ok}")
-      ok := ok + 1
-    | _ => throw (IO.userError s!"Malformed line: {line}")
-  IO.println s!"{ok}/{lines.length} DeFi AMM+Vault differential traces matched bit-for-bit"
-"""
+_LEAN_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 
 
 def main() -> int:
@@ -98,6 +76,10 @@ def main() -> int:
         assert out <= dA
 
         rows.append(f"{x}|{y}|{dx}|{pool.reserve_x}|{pool.reserve_y}|{dy}|{A}|{S}|{dA}|{minted}|{out}")
+
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write("\n".join(rows) + "\n")
+        return 0
 
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write("\n".join(rows) + "\n")

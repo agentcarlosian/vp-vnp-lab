@@ -1,14 +1,15 @@
 {
   "schema": "pcvh.spec-lock.v2",
   "name": "blueprint06-ai-agent-capability-guard",
-  "pinned_at": "2026-11-25T02:48:14.764713+00:00",
-  "spec_bundle_sha256": "8598acf9fc0050cc0478a19b412d58c003fa7c3f5d68cbe90e10bfb3b509b79d",
+  "pinned_at": "2026-11-28T16:28:36.926231+00:00",
+  "spec_bundle_sha256": "32349a6abc402bf7f5532208d7f6ad8b9893ab842602a9ee6cbd62f57e4a197c",
   "files": {
-    "pcvh.toml": "2e86948ac681b71ecca92ce4a2da6e599732344889ebca655a8f48e4d19ec535",
+    "pcvh.toml": "25ec1c94d12110ddff6e3b987a1a9637aded3340944ab44ad4bb967dc6d4e1c4",
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
     "Specs/AgentGuard/Statement.lean": "76f92ea5f4ff7fa2e3e5e27e096510cb9c78966ffb17e08184326bbc3438ebee",
     "Specs/AgentGuard/Challenge.lean": "7c18a3d9207daccc8ae7f071313ea0b8568565bd8bb7d3f95daea6b535b6ae94",
     "lakefile.toml": "b9aecd693a660cbbfcec202381c888f8f2b0c59d1da874242c763e31379f36a6",
-    "conformance_fuzz.py": "3f1d4be921733872d6222fafc493e9f15f37ed4422480dbf91107f072522d47d"
+    "conformance_fuzz.py": "0a277310810a072502c138c876ffd9d664f4b27fd533ac59aebfbfd7a19a8adf",
+    "conformance-oracle.lean.in": "79e0c03d88f67bcbd609b9967103cc45ccfd12a4fe3bc3c0b2fd359dafc4be2b"
   }
 }

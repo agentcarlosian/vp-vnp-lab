@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-25T03:05:36.946454+00:00",
+  "timestamp_utc": "2026-11-28T16:35:40.197925+00:00",
   "spec_name": "blueprint07-limit-orderbook-and-margin",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "2f5d3e775496f4e1a24cf5ef84d6ad7b348a13b994eb6b3d30715132a4569cbc",
+  "spec_bundle_sha256": "d7c84778c23bcc6bc786e7de6ef1a0a205d47921329540f2ced1adf8f9c372a5",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "margin_liquidation_exact_iff",
@@ -29,6 +29,6 @@
     "differential_conformance": "PASS (1000/1000 Rust OrderBook+Margin differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 18.681,
-  "attestation_sha256": "8b315c07bd436a7554fcbdb0841038585fa273e367f2b6bbbd3e795b201badb7"
+  "duration_s": 11.291,
+  "attestation_sha256": "62e9de6159a091b0474b95ce57bb97bbf571368f752ecd7966c92447586cf8bb"
 }

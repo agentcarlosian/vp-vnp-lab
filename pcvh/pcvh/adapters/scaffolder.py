@@ -550,7 +550,7 @@ import subprocess
 import sys
 import tempfile
 
-_LEAN_RUNNER = r"""{lean_runner}"""
+_LEAN_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 {_PORTABLE_LEAN_RESOLVER}
 
 def main() -> int:
@@ -589,6 +589,10 @@ def main() -> int:
     env = os.environ.copy()
     env["PATH"] = lean_bin + os.pathsep + env.get("PATH", "")
 
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write(run_proc.stdout)
+        return 0
+
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write(run_proc.stdout)
         data_fp = pathlib.Path(tf.name)
@@ -619,6 +623,7 @@ if __name__ == "__main__":
         "src/lib.rs": lib_rs,
         "src/main.rs": main_rs,
         "conformance_fuzz.py": bridge,
+        "conformance-oracle.lean.in": lean_runner,
     }
 
 
@@ -802,7 +807,7 @@ import subprocess
 import sys
 import tempfile
 
-_LEAN_RUNNER = r"""{lean_runner}"""
+_LEAN_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 {_PORTABLE_LEAN_RESOLVER}
 
 def main() -> int:
@@ -835,6 +840,10 @@ def main() -> int:
     env = os.environ.copy()
     env["PATH"] = lean_bin + os.pathsep + env.get("PATH", "")
 
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write(ts_proc.stdout)
+        return 0
+
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write(ts_proc.stdout)
         data_fp = pathlib.Path(tf.name)
@@ -866,6 +875,7 @@ if __name__ == "__main__":
         "src/target.ts": target_ts,
         "src/conformance_runner.ts": runner_ts,
         "conformance_fuzz.py": bridge,
+        "conformance-oracle.lean.in": lean_runner,
     }
 
 
@@ -1060,7 +1070,7 @@ contract ConformanceTest {
         rows.append(f"{s}|{r}|{amt}|{acc}|{ns}|{nr}")
 """
 
-    lean_runner = _lean_conformance_script(template, mod_name, ns).replace("{TARGET_LABEL}", "Solidity/Foundry")
+    lean_runner = _lean_conformance_script(template, mod_name, ns).replace("{TARGET_LABEL}", "Solidity uint256 model")
     bridge = f'''"""Differential Conformance Bridge: Solidity / Foundry (`forge test`) vs Lean 4 `Specs.{mod_name}.Statement`."""
 
 from __future__ import annotations
@@ -1074,7 +1084,7 @@ import subprocess
 import sys
 import tempfile
 
-_LEAN_RUNNER = r"""{lean_runner}"""
+_LEAN_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 {_PORTABLE_LEAN_RESOLVER}
 
 def main() -> int:
@@ -1119,6 +1129,10 @@ def main() -> int:
     env = os.environ.copy()
     env["PATH"] = lean_bin + os.pathsep + env.get("PATH", "")
 
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write("\\n".join(rows) + "\\n")
+        return 0
+
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write("\\n".join(rows) + "\\n")
         data_fp = pathlib.Path(tf.name)
@@ -1149,6 +1163,7 @@ if __name__ == "__main__":
         "src/Target.sol": contract_sol,
         "test/Conformance.t.sol": test_sol,
         "conformance_fuzz.py": bridge,
+        "conformance-oracle.lean.in": lean_runner,
     }
 
 
@@ -1250,7 +1265,7 @@ import tempfile
 
 {imp}
 
-_LEAN_RUNNER = r"""{lean_runner}"""
+_LEAN_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 {_PORTABLE_LEAN_RESOLVER}
 
 def main() -> int:
@@ -1268,6 +1283,10 @@ def main() -> int:
     lake_exe = os.path.join(lean_bin, "lake.exe" if os.name == "nt" else "lake")
     env = os.environ.copy()
     env["PATH"] = lean_bin + os.pathsep + env.get("PATH", "")
+
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write("\\n".join(rows) + "\\n")
+        return 0
 
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write("\\n".join(rows) + "\\n")
@@ -1296,7 +1315,25 @@ if __name__ == "__main__":
     return {
         "target.py": target_py,
         "conformance_fuzz.py": bridge,
+        "conformance-oracle.lean.in": lean_runner,
     }
+
+
+# SHA-256 of the ordered case inputs and results replayed against each template specification.
+_REFERENCE_TRANSCRIPTS = {
+    ("python", "ledger"): "64f475006d6426b1b0c05c0cfae44c99bf4d9ef1adb983493034156ee7265369",
+    ("python", "ratelimit"): "ffddb3c654d79a805183a998b0ca664c7eeaf5c84e0da74b20de8bd2d7f6b0f2",
+    ("python", "vault"): "34b21c7d944845b48572acd43d5473974df505ba1d8e490d698dababe1fe3bfe",
+    ("rust", "ledger"): "12570111a3de51ed9419c4f6ce330f4e8146f0bab0efb863916ea63d5d3b267b",
+    ("rust", "ratelimit"): "3e46ae0c6ddbeb2ece5294ff10e757e75e42d908db7d1f7bfbdf714df4d333d7",
+    ("rust", "vault"): "6ca7e8ec4e913a9da4b58a3c78bd43a52eb203e089111c867d28b7f6f40caba9",
+    ("solidity", "ledger"): "64f475006d6426b1b0c05c0cfae44c99bf4d9ef1adb983493034156ee7265369",
+    ("solidity", "ratelimit"): "ffddb3c654d79a805183a998b0ca664c7eeaf5c84e0da74b20de8bd2d7f6b0f2",
+    ("solidity", "vault"): "34b21c7d944845b48572acd43d5473974df505ba1d8e490d698dababe1fe3bfe",
+    ("typescript", "ledger"): "12570111a3de51ed9419c4f6ce330f4e8146f0bab0efb863916ea63d5d3b267b",
+    ("typescript", "ratelimit"): "3e46ae0c6ddbeb2ece5294ff10e757e75e42d908db7d1f7bfbdf714df4d333d7",
+    ("typescript", "vault"): "6ca7e8ec4e913a9da4b58a3c78bd43a52eb203e089111c867d28b7f6f40caba9",
+}
 
 
 def scaffold_project(
@@ -1361,6 +1398,8 @@ def scaffold_project(
             f'auto_lake_shake = true\n'
             f'forbid_umbrella_imports = ["Mathlib", "Mathlib.Tactic", "Mathlib.All"]\n\n'
             f'[conformance]\n'
+            f'traces = 500\n'
+            f'transcript_sha256 = "{_REFERENCE_TRANSCRIPTS[lang, tmpl]}"\n'
             f'command = "python conformance_fuzz.py --traces 500"\n'
         ),
     }

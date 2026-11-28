@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-25T03:04:53.005509+00:00",
+  "timestamp_utc": "2026-11-28T16:35:07.772850+00:00",
   "spec_name": "blueprint04-double-entry-ledger",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "659206bf631ac41d6096944c6af045770bd08f0dde138796c13a8c05a56f0dff",
+  "spec_bundle_sha256": "a1fa43c18ec59f998aa02a4070674c6853094ac7eb0b1e7613b47cccb6f59ae0",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "ledger_spec_nonvacuous",
@@ -28,6 +28,6 @@
     "differential_conformance": "PASS (1000/1000 differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 17.141,
-  "attestation_sha256": "cab1e53466134124f89c1cf4b14c5c1768a273f53067cc55667c02e351f43882"
+  "duration_s": 12.016,
+  "attestation_sha256": "d872030bbedab2425d9f39af0f1bd485eeec32694447f44c8bf9265f6cd304d7"
 }

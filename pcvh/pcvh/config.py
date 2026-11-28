@@ -25,6 +25,8 @@ class SpecConfig:
     require_nonvacuity_witness: bool = True
     nonvacuity_suffix: str = "nonvacuous"
     conformance_command: Optional[str] = None
+    conformance_traces: int = 0
+    conformance_sha256: str = ""
     falsification_enabled: bool = True
     falsification_command: Optional[str] = None
     falsification_max_seconds: int = 30
@@ -47,7 +49,7 @@ class SpecConfig:
             self.statement_rel,
             self.challenge_rel,
         ]
-        for cand in ("lakefile.toml", "lakefile.lean", "lake-manifest.json", "conformance_fuzz.py"):
+        for cand in ("lakefile.toml", "lakefile.lean", "lake-manifest.json", "conformance_fuzz.py", "conformance-oracle.lean.in"):
             if (self.project_root / cand).exists():
                 base.append(cand)
         for ex in self.extra_tcb_files:
@@ -82,6 +84,8 @@ def load_spec_config(project_root: pathlib.Path) -> SpecConfig:
         require_nonvacuity_witness=bool(spec.get("require_nonvacuity_witness", True)),
         nonvacuity_suffix=str(spec.get("nonvacuity_suffix", "nonvacuous")),
         conformance_command=conf.get("command"),
+        conformance_traces=conf.get("traces", 0),
+        conformance_sha256=conf.get("transcript_sha256", ""),
         falsification_enabled=bool(fals.get("enabled", True)),
         falsification_command=fals.get("command"),
         falsification_max_seconds=int(fals.get("max_seconds", 30)),

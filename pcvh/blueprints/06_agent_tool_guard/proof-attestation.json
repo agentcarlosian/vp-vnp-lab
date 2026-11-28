@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-25T03:05:18.262096+00:00",
+  "timestamp_utc": "2026-11-28T16:35:28.950736+00:00",
   "spec_name": "blueprint06-ai-agent-capability-guard",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "8598acf9fc0050cc0478a19b412d58c003fa7c3f5d68cbe90e10bfb3b509b79d",
+  "spec_bundle_sha256": "32349a6abc402bf7f5532208d7f6ad8b9893ab842602a9ee6cbd62f57e4a197c",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "agent_guard_spec_nonvacuous",
@@ -29,6 +29,6 @@
     "differential_conformance": "PASS (1000/1000 TypeScript AI Agent Guardrail 12-step traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 15.623,
-  "attestation_sha256": "8c2d70ab81caacb8ef59642b720879db59b1f2b990d74cc45c6991525ca58227"
+  "duration_s": 13.695,
+  "attestation_sha256": "3df06c168c61263e1873565f0d348e1f63d9e27008ba8db7b1ff63d163b5ca2a"
 }
