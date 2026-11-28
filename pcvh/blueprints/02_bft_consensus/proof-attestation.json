@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-25T03:04:15.955217+00:00",
+  "timestamp_utc": "2026-11-28T16:34:37.129912+00:00",
   "spec_name": "blueprint02-bft-consensus-merkle",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "ca66d049396e1d789b8e147062ad4c4720324b335e41b7576b45dde36fde6808",
+  "spec_bundle_sha256": "4f75d6fff32ca49867574b157e6b4efe16835bd536a6012ce5b7eb4878361d3e",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "bft_agreement_safety",
@@ -28,6 +28,6 @@
     "differential_conformance": "PASS (500/500 BFT+Merkle differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 15.293,
-  "attestation_sha256": "bca352bc0ca031e3b59565db7790e039cc9abea761512a668afee15642cccf25"
+  "duration_s": 15.924,
+  "attestation_sha256": "62d9beb196fe64bfb96be5e87ab5cf0536dd0c27b9c50fe50cba6bb6a08174b0"
 }

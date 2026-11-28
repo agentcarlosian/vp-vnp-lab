@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import datetime
+import hashlib
 import hmac
+import os
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
@@ -17,6 +19,7 @@ import json
 import pathlib
 import secrets
 import sys
+import tempfile
 import threading
 import time
 import urllib.parse
@@ -64,6 +67,43 @@ _SKIP_SCAN_DIRS = {
 }
 
 
+_PROJECT_FILES = {
+    "pcvh.toml", LOCK_FILENAME, "proof-attestation.json", "lean-toolchain",
+    "lakefile.toml", "lake-manifest.json", "conformance_fuzz.py", "conformance-oracle.lean.in",
+    "target.py", "Cargo.toml", "package.json", "tsconfig.json", "foundry.toml",
+}
+
+
+def _project_file(root: pathlib.Path, name: str) -> pathlib.Path:
+    rel = pathlib.PurePosixPath(name.replace("\\", "/"))
+    if (not rel.parts or pathlib.PureWindowsPath(name).anchor or ":" in name
+            or any(p.startswith(".") or p in _SKIP_SCAN_DIRS for p in rel.parts)):
+        raise ValueError("Invalid Studio file path")
+    allowed = (rel.as_posix() in _PROJECT_FILES or rel.suffix == ".lean"
+               or (len(rel.parts) == 1 and rel.match("prod_*.py"))
+               or (rel.parts[0] in {"src", "test"} and rel.suffix in {".rs", ".ts", ".sol"}))
+    if not allowed:
+        raise ValueError("File is outside the Studio project file list")
+    path = root.joinpath(*rel.parts)
+    if path.resolve() != path or (path.exists() and (not path.is_file() or path.stat().st_nlink > 1)):
+        raise ValueError("Studio requires an ordinary project file")
+    return path
+
+
+def _workspace_key_directory(root: pathlib.Path) -> pathlib.Path:
+    configured = os.environ.get("PCVH_STUDIO_KEY_DIR")
+    state = os.environ.get("LOCALAPPDATA" if os.name == "nt" else "XDG_DATA_HOME")
+    base = pathlib.Path(configured) if configured else (
+        pathlib.Path(state) if state else pathlib.Path.home() / ".local" / "share"
+    ) / "pcvh" / "studio-keys"
+    base = base.expanduser().resolve()
+    identity = hashlib.sha256(os.fsencode(os.path.normcase(str(root)))).hexdigest()
+    directory = base / identity
+    if directory.resolve() != directory or directory.is_relative_to(root):
+        raise ValueError("Set PCVH_STUDIO_KEY_DIR to a private directory outside the Studio workspace")
+    return directory
+
+
 @dataclass
 class StudioJob:
     job_id: str
@@ -105,11 +145,7 @@ class StudioState:
         self._lsp_pool: Dict[str, tuple[LeanLSPClient, threading.Lock]] = {}
 
     def get_ui_html(self) -> str:
-        html = files(__package__).joinpath("ui.html").read_text(encoding="utf-8")
-        meta = f'<meta name="pcvh-csrf-token" content="{self.csrf_token}">'
-        if "</head>" in html:
-            return html.replace("</head>", f"  {meta}\n</head>", 1)
-        return meta + html
+        return files(__package__).joinpath("ui.html").read_text(encoding="utf-8")
 
     def close_project_lsp(self, project_id: str) -> None:
         with self._lock:
@@ -131,7 +167,9 @@ class StudioState:
         cand = (self.root_dir / project_id).resolve()
         if not cand.is_relative_to(self.root_dir):
             raise ValueError(f"Path outside studio root rejected: {project_id}")
-        if not (cand / "pcvh.toml").exists():
+        if any(p.startswith(".") or p in _SKIP_SCAN_DIRS for p in cand.relative_to(self.root_dir).parts):
+            raise ValueError("Hidden or generated Studio project path")
+        if not _project_file(cand, "pcvh.toml").exists():
             raise FileNotFoundError(f"No pcvh.toml found for project '{project_id}'")
         return cand
 
@@ -142,7 +180,7 @@ class StudioState:
 
         for p in self.root_dir.rglob("pcvh.toml"):
             rel = p.relative_to(self.root_dir)
-            if any(part in _SKIP_SCAN_DIRS for part in rel.parts):
+            if any(part.startswith(".") or part in _SKIP_SCAN_DIRS for part in rel.parts):
                 continue
             if p.parent not in found:
                 found.append(p.parent)
@@ -151,9 +189,10 @@ class StudioState:
         for proj_dir in sorted(found):
             rel_id = "." if proj_dir == self.root_dir else proj_dir.relative_to(self.root_dir).as_posix()
             try:
+                proj_dir = self._safe_project_path(rel_id)
                 cfg = load_spec_config(proj_dir)
                 man = verify_tcb_manifest(cfg)
-                att_fp = proj_dir / "proof-attestation.json"
+                att_fp = _project_file(proj_dir, "proof-attestation.json")
                 att = json.loads(att_fp.read_text(encoding="utf-8")) if att_fp.exists() else None
                 projects.append(
                     {
@@ -202,18 +241,18 @@ class StudioState:
         proj_dir = self._safe_project_path(project_id)
         cfg = load_spec_config(proj_dir)
         man = verify_tcb_manifest(cfg)
-        lock_fp = proj_dir / LOCK_FILENAME
-        att_fp = proj_dir / "proof-attestation.json"
+        lock_fp = _project_file(proj_dir, LOCK_FILENAME)
+        att_fp = _project_file(proj_dir, "proof-attestation.json")
 
         def _read_opt(rel: str) -> str:
-            fp = proj_dir / rel
+            fp = _project_file(proj_dir, rel)
             return fp.read_text(encoding="utf-8", errors="replace") if fp.exists() else ""
 
         sol_rel = f"{cfg.solution_module.replace('.', '/')}.lean"
         lean_files: List[str] = []
         for lf in sorted(proj_dir.rglob("*.lean")):
             rel = lf.relative_to(proj_dir)
-            if any(part in _SKIP_SCAN_DIRS for part in rel.parts):
+            if any(part.startswith(".") or part in _SKIP_SCAN_DIRS for part in rel.parts):
                 continue
             lean_files.append(rel.as_posix())
 
@@ -255,7 +294,7 @@ class StudioState:
 
     def read_project_file(self, project_id: str, rel_file: str) -> str:
         proj_dir = self._safe_project_path(project_id)
-        fp = (proj_dir / rel_file).resolve()
+        fp = _project_file(proj_dir, rel_file)
         if not fp.is_relative_to(proj_dir) or not fp.exists():
             raise FileNotFoundError(f"File not found inside project: {rel_file}")
         return fp.read_text(encoding="utf-8", errors="replace")
@@ -270,13 +309,8 @@ class StudioState:
     ) -> Dict[str, Any]:
         proj_dir = self._safe_project_path(project_id)
         cfg = load_spec_config(proj_dir)
-        clean_rel = rel_file.replace("\\", "/").lstrip("/")
-        if not clean_rel or ".." in pathlib.PurePosixPath(clean_rel).parts:
-            raise ValueError(f"Invalid relative file path: {rel_file}")
-        fp = (proj_dir / clean_rel).resolve()
-        if not fp.is_relative_to(proj_dir):
-            raise ValueError(f"File path escapes project root: {rel_file}")
-
+        fp = _project_file(proj_dir, rel_file)
+        clean_rel = fp.relative_to(proj_dir).as_posix()
         tcb_protected = {
             cfg.statement_rel,
             cfg.challenge_rel,
@@ -287,7 +321,7 @@ class StudioState:
             LOCK_FILENAME,
             *(p.replace("\\", "/") for p in cfg.tcb_rel_paths),
         }
-        if clean_rel in tcb_protected and not allow_tcb:
+        if fp in {proj_dir / name for name in tcb_protected} and not allow_tcb:
             raise ValueError(
                 f"'{clean_rel}' is a protected TCB specification file. Enable 'Unlock TCB Edit' to modify and re-pin."
             )
@@ -328,7 +362,7 @@ class StudioState:
         content_override: Optional[str] = None,
     ) -> Dict[str, Any]:
         proj_dir = self._safe_project_path(project_id)
-        fp = (proj_dir / rel_file).resolve()
+        fp = _project_file(proj_dir, rel_file)
         if not fp.is_relative_to(proj_dir) or not fp.exists():
             raise FileNotFoundError(f"Lean file not found: {rel_file}")
         text = content_override if content_override is not None else fp.read_text(encoding="utf-8", errors="replace")
@@ -373,19 +407,28 @@ class StudioState:
 
     def sign_project_attestation(self, project_id: str) -> Dict[str, Any]:
         proj_dir = self._safe_project_path(project_id)
-        att_fp = proj_dir / "proof-attestation.json"
+        att_fp = _project_file(proj_dir, "proof-attestation.json")
         if not att_fp.exists():
             raise FileNotFoundError("No proof-attestation.json found yet; run Verify (Palomar Gate) first.")
-        key_dir = self.root_dir / ".pcvh_studio_keys"
+        key_dir = _workspace_key_directory(self.root_dir)
+        if not key_dir.exists():
+            key_dir.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            # Publish both files together. A concurrent Studio may win the rename.
+            with tempfile.TemporaryDirectory(dir=key_dir.parent) as tmp:
+                pending = pathlib.Path(tmp) / "keys"
+                pending.mkdir(mode=0o700)
+                generate_ed25519_keypair(pending)
+                try:
+                    pending.rename(key_dir)
+                except OSError:
+                    if not key_dir.is_dir():
+                        raise
         priv_fp = key_dir / "pcvh_signing.key.pem"
         pub_fp = key_dir / "pcvh_signing.pub.pem"
-        if not priv_fp.exists() or not pub_fp.exists():
-            kp = generate_ed25519_keypair(key_dir)
-            pub_pem = kp.public_key_pem
-            key_id = kp.key_id
-        else:
-            pub_pem = pub_fp.read_text(encoding="utf-8")
-            key_id = compute_public_key_id(pub_pem)
+        if not priv_fp.is_file() or not pub_fp.is_file():
+            raise ValueError("The workspace signing keypair is incomplete")
+        pub_pem = pub_fp.read_text(encoding="utf-8")
+        key_id = compute_public_key_id(pub_pem)
         signed = sign_attestation_file(att_fp, priv_fp, key_id=key_id)
         return {
             "ok": True,
@@ -396,7 +439,7 @@ class StudioState:
 
     def verify_project_signature(self, project_id: str, public_key_pem: str) -> Dict[str, Any]:
         proj_dir = self._safe_project_path(project_id)
-        att_fp = proj_dir / "proof-attestation.json"
+        att_fp = _project_file(proj_dir, "proof-attestation.json")
         if not att_fp.exists():
             return {"ok": False, "reason": "No proof-attestation.json found for this project."}
         att = json.loads(att_fp.read_text(encoding="utf-8"))
@@ -462,7 +505,7 @@ class StudioState:
                         _append_log(f"  note: {note}")
                     _finish("succeeded" if res.ok else "failed", result=res.to_dict())
                 elif action == "verify":
-                    att_fp = proj_dir / "proof-attestation.json"
+                    att_fp = _project_file(proj_dir, "proof-attestation.json")
                     res = run_palomar_gate(
                         cfg, trusted_local=True,
                         lean_bin=self.lean_bin,
@@ -554,6 +597,10 @@ class _StudioHandler(BaseHTTPRequestHandler):
         hostname = (parsed.hostname or "").lower()
         return hostname in self._allowed_hosts()
 
+    def _authenticated(self) -> bool:
+        token = self.headers.get("X-PCVH-Token", "")
+        return token.isascii() and hmac.compare_digest(token, self.server.studio_state.csrf_token)
+
     def _check_post_security(self) -> Optional[tuple[int, str]]:
         if not self._check_host_header():
             return HTTPStatus.FORBIDDEN, "Rejected non-local Host header."
@@ -568,8 +615,7 @@ class _StudioHandler(BaseHTTPRequestHandler):
         ctype = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
         if ctype != "application/json":
             return HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "POST requests require Content-Type: application/json."
-        token = (self.headers.get("X-PCVH-Token") or "").strip()
-        if not token or not hmac.compare_digest(token, self.server.studio_state.csrf_token):
+        if not self._authenticated():
             return HTTPStatus.FORBIDDEN, "Missing or invalid X-PCVH-Token header."
         return None
 
@@ -619,6 +665,9 @@ class _StudioHandler(BaseHTTPRequestHandler):
                 self.wfile.write(body)
                 return
 
+            if parsed.path.startswith("/api/") and not self._authenticated():
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": "Open the Studio launch URL from your terminal."})
+                return
             if parsed.path == "/api/overview":
                 self._send_json(HTTPStatus.OK, st.get_overview())
                 return
@@ -746,7 +795,7 @@ def serve_studio(
 ) -> int:
     srv = create_studio_server(root_dir, host=host, port=port, lean_bin=lean_bin)
     actual_port = srv.server_address[1]
-    url = f"http://{host}:{actual_port}"
+    url = f"http://{host}:{actual_port}/#token={srv.studio_state.csrf_token}"
     print(f"=== PCVH Studio running at {url} ===")
     print(f"Workspace root: {pathlib.Path(root_dir).resolve()}")
     print("Press Ctrl+C to stop.", flush=True)

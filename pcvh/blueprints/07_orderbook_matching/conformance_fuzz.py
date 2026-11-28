@@ -10,43 +10,7 @@ import subprocess
 import sys
 import tempfile
 
-_LEAN_RUNNER = r"""
-import Specs.OrderBook.Statement
-open OrderBook
-
-def pNat! (s : String) : Nat := s.trimAscii.toString.toNat!
-
-#eval do
-  let raw ← IO.FS.readFile "{DATA_FILE}"
-  let lines : List String := (raw.splitOn "\n").map (fun (s : String) => s.trimAscii.toString) |>.filter (fun (s : String) => !s.isEmpty)
-  let mut ok := 0
-  for line in lines do
-    match line.splitOn "|" with
-    | [sBidP, sBidQ, sAskP, sAskQ, sSeq,
-       sExpFill, sExpExecP, sExpRemBid, sExpRemAsk, sExpNextSeq,
-       sBuyQ, sSellQ, sVaultQ, sNotional, sFee,
-       sExpSettled, sExpBuyQ, sExpSellQ, sExpVaultQ,
-       sColl, sPosNotional, sMaintBps, sExpLiq] =>
-      let bid : Order := { id := 1, seq := pNat! sSeq, price := pNat! sBidP, qty := pNat! sBidQ }
-      let ask : Order := { id := 2, seq := (pNat! sSeq) - 1, price := pNat! sAskP, qty := pNat! sAskQ }
-      let m := matchBidAsk bid ask (pNat! sSeq)
-      if m.fillQty != pNat! sExpFill || m.execPrice != pNat! sExpExecP ||
-         m.remBidQty != pNat! sExpRemBid || m.remAskQty != pNat! sExpRemAsk || m.nextSeq != pNat! sExpNextSeq then
-        throw (IO.userError s!"MATCH MISMATCH at trace {ok}")
-
-      let b0 : QuoteBalances := { buyerQuote := pNat! sBuyQ, sellerQuote := pNat! sSellQ, feeVault := pNat! sVaultQ }
-      let (settled, nb) := settleQuote b0 (pNat! sNotional) (pNat! sFee)
-      if settled != (pNat! sExpSettled == 1) || nb.buyerQuote != pNat! sExpBuyQ ||
-         nb.sellerQuote != pNat! sExpSellQ || nb.feeVault != pNat! sExpVaultQ then
-        throw (IO.userError s!"SETTLE MISMATCH at trace {ok}")
-
-      let liq := isLiquidatable (pNat! sColl) (pNat! sPosNotional) (pNat! sMaintBps)
-      if liq != (pNat! sExpLiq == 1) then
-        throw (IO.userError s!"LIQUIDATION MISMATCH at trace {ok}")
-      ok := ok + 1
-    | _ => throw (IO.userError s!"Malformed row: {line}")
-  IO.println s!"{ok}/{lines.length} Rust OrderBook+Margin differential traces matched bit-for-bit"
-"""
+_LEAN_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 
 
 def _resolve_lean_bin(start: pathlib.Path) -> str:
@@ -119,6 +83,10 @@ def main() -> int:
     lake_exe = os.path.join(lean_bin, "lake.exe" if os.name == "nt" else "lake")
     env = os.environ.copy()
     env["PATH"] = lean_bin + os.pathsep + env.get("PATH", "")
+
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write(run_proc.stdout)
+        return 0
 
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write(run_proc.stdout)

@@ -8,57 +8,13 @@ import pathlib
 import random
 import shutil
 import subprocess
+import sys
 import tempfile
 from typing import List
 
 from prod_zk_replay import WireGuardReplayWindow, unpack_bits4, verify_r1cs_range4_and_mux
 
-_LEAN_RUNNER = r"""
-import Specs.ZkReplay.Statement
-open ZkReplay
-
-def pNat! (s : String) : Nat := s.trimAscii.toString.toNat!
-
-def pInt! (s : String) : Int :=
-  let t := s.trimAscii.toString
-  if t.startsWith "-" then -Int.ofNat (t.drop 1).toString.toNat!
-  else Int.ofNat t.toNat!
-
-def bitmapOfOffsets (offs : List Nat) : Nat :=
-  offs.foldl (fun acc d => if d < 64 then acc ||| (1 <<< d) else acc) 0
-
-#eval do
-  let raw ← IO.FS.readFile "{DATA_FILE}"
-  let lines : List String := (raw.splitOn "\n").map (fun (s : String) => s.trimAscii.toString) |>.filter (fun (s : String) => !s.isEmpty)
-  let mut ok := 0
-  for line in lines do
-    match line.splitOn "|" with
-    | [sV, sSel, sA, sB, sExpPack, sExpMux, sSeqs, sExpDecs, sExpHigh, sExpMask] =>
-      let v := pNat! sV
-      let sel := pInt! sSel
-      let a := pInt! sA
-      let b := pInt! sB
-      let u : Int × Int × Int × Int := unpackBits4 v
-      let packed := packBits4 u.1 u.2.1 u.2.2.1 u.2.2.2
-      let muxOut := muxGate sel a b
-      if packed != pInt! sExpPack || muxOut != pInt! sExpMux then
-        throw (IO.userError s!"ZK MISMATCH at trace {ok}")
-
-      let seqs : List Nat := (sSeqs.splitOn ",").map pNat!
-      let expDecs : List Bool := (sExpDecs.splitOn ",").map (fun (d : String) => pNat! d == 1)
-      let mut w := emptyWindow
-      let mut decs : List Bool := []
-      for seq in seqs do
-        let (acc, w') := acceptPacket w seq
-        w := w'
-        decs := decs ++ [acc]
-      let leanMask := bitmapOfOffsets w.seenOffsets
-      if decs != expDecs || w.highest != pNat! sExpHigh || leanMask != pNat! sExpMask then
-        throw (IO.userError s!"REPLAY MISMATCH at trace {ok}: lean=({w.highest},{leanMask}) py=({sExpHigh},{sExpMask})")
-      ok := ok + 1
-    | _ => throw (IO.userError s!"Malformed line: {line}")
-  IO.println s!"{ok}/{lines.length} ZK+ReplayWindow 64-bit differential traces matched bit-for-bit"
-"""
+_LEAN_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 
 
 def _resolve_lean_bin(start: pathlib.Path) -> str:
@@ -134,6 +90,10 @@ def main() -> int:
             f"{v}|{sel}|{a}|{b}|{packed}|{mux_out}|"
             f"{','.join(str(x) for x in seqs)}|{','.join(str(d) for d in decs)}|{win.highest}|{win.bitmap}"
         )
+
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write("\n".join(rows) + "\n")
+        return 0
 
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write("\n".join(rows) + "\n")

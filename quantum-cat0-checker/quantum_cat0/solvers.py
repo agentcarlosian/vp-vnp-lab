@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from fractions import Fraction
 from itertools import combinations
 from math import sqrt
 from typing import Dict, List, Optional, Tuple
@@ -41,8 +42,9 @@ class CoveringCapacityResult:
     cutting_plane_rounds: int
     active_bn_constraints: int
     witness_cat0_metric: np.ndarray        # worst-case CAT(0) spectral metric D^* = sqrt(U^*)
-    witness_cat0_max_bn_violation: float   # certified <= 1e-5
+    witness_cat0_max_bn_violation: float   # numerical residual at unit diameter
     witness_euclidean_coords: Optional[np.ndarray] = None
+    cat0_solver_converged: bool = True
 
     def to_dict(self) -> Dict[str, object]:
         return {
@@ -52,13 +54,14 @@ class CoveringCapacityResult:
             "rho_metric": round(self.rho_metric, 6),
             "rho_cat0": round(self.rho_cat0, 6),
             "rho_euclidean": round(self.rho_euclidean, 6),
-            "ebit_budget_metric": round(self.ebit_budget_metric, 6),
-            "ebit_budget_cat0": round(self.ebit_budget_cat0, 6),
-            "ebit_budget_euclidean": round(self.ebit_budget_euclidean, 6),
+            "ebit_budget_metric": self.ebit_budget_metric,
+            "ebit_budget_cat0": self.ebit_budget_cat0,
+            "ebit_budget_euclidean": self.ebit_budget_euclidean,
             "cat0_compression_ratio": round(self.cat0_compression_ratio, 6),
             "euclidean_vs_cat0_ratio": round(self.euclidean_vs_cat0_ratio, 6),
             "cutting_plane_rounds": self.cutting_plane_rounds,
             "active_bn_constraints": self.active_bn_constraints,
+            "cat0_solver_converged": self.cat0_solver_converged,
             "witness_cat0_max_bn_violation": round(self.witness_cat0_max_bn_violation, 8),
         }
 
@@ -89,11 +92,7 @@ class SLOCCFeasibilityResult:
             "metric_lp_ratio": round(self.metric_lp_ratio, 6),
             "cat0_candidate_ratio": round(self.cat0_spectral_ratio, 6),
             "cat0_spectral_ratio": round(self.cat0_spectral_ratio, 6),  # legacy key
-            "covering_ebit_budget_cat0": (
-                round(self.covering_ebit_budget_cat0, 6)
-                if self.covering_ebit_budget_cat0 is not None
-                else None
-            ),
+            "covering_ebit_budget_cat0": self.covering_ebit_budget_cat0,
             "covering_feasible_with_l2_cover": self.covering_feasible_with_l2_cover,
             "notes": list(self.notes),
         }
@@ -116,7 +115,7 @@ def _solve_socp_ratio(
     max_rounds: int = 40,
     cuts_per_round: int = 100,
     tol: float = 1e-6,
-) -> Tuple[float, np.ndarray, int, int]:
+) -> Tuple[float, np.ndarray, int, int, bool]:
     """Solve max_{u in Cone} sum_{f in T} t_f u_f  s.t.  sum_{e in S} s_e u_e <= 1."""
     n = net.num_parties
     u_vars: Dict[Tuple[int, int], cp.Variable] = {
@@ -144,7 +143,7 @@ def _solve_socp_ratio(
         prob = cp.Problem(obj, base_constraints)
         solve_with_conic_fallback(prob, preferred=solver)
         U = _extract_u_matrix(u_vars, n)
-        return float(prob.value), U, 0, 0
+        return float(prob.value), U, 0, 0, prob.status == cp.OPTIMAL
 
     if not use_cutting_planes:
         constraints = list(base_constraints)
@@ -153,7 +152,7 @@ def _solve_socp_ratio(
         solve_with_conic_fallback(prob, preferred=solver)
         U = _extract_u_matrix(u_vars, n)
         n_bn = 3 * (n * (n - 1) * (n - 2) * (n - 3) // 24) if n >= 4 else 0
-        return float(prob.value), U, 1, n_bn
+        return float(prob.value), U, 1, n_bn, prob.status == cp.OPTIMAL
 
     # Lazy cutting-plane separation for larger networks (n > 10)
     added_quads = set()
@@ -161,6 +160,7 @@ def _solve_socp_ratio(
     rounds = 0
     U = np.zeros((n, n), dtype=float)
     val = 0.0
+    converged = False
     for r in range(1, max_rounds + 1):
         rounds = r
         prob = cp.Problem(obj, constraints)
@@ -169,6 +169,7 @@ def _solve_socp_ratio(
         U = _extract_u_matrix(u_vars, n)
         viols = find_violated_berg_nikolaev_quads(U, tol=tol)
         if not viols:
+            converged = prob.status == cp.OPTIMAL
             break
         added_this_round = 0
         for _, q in viols:
@@ -180,7 +181,7 @@ def _solve_socp_ratio(
                     break
         if added_this_round == 0:
             break
-    return val, U, rounds, len(added_quads)
+    return val, U, rounds, len(added_quads), converged
 
 
 def _solve_euclidean_sdp_ratio(net: QuantumNetwork, solver: str) -> Tuple[float, np.ndarray, np.ndarray]:
@@ -220,6 +221,24 @@ def _solve_euclidean_sdp_ratio(net: QuantumNetwork, solver: str) -> Tuple[float,
     return float(prob.value), U, coords
 
 
+def _relative_rates(net: QuantumNetwork) -> tuple[QuantumNetwork, float]:
+    # All three cone objectives and the cut ratios are homogeneous in the rates.
+    rates = [*net.source_eprs.values(), *net.target_eprs.values(),
+             *(Fraction(str(resource.rate)) for resource in net.source_ghz)]
+    unit = max(rates, default=1) or 1
+    if unit == 1:
+        return net, 1.0
+    return replace(net, source_eprs={e: w / unit for e, w in net.source_eprs.items()},
+                   target_eprs={e: w / unit for e, w in net.target_eprs.items()},
+                   source_ghz=[replace(g, rate=float(Fraction(str(g.rate)) / unit))
+                               for g in net.source_ghz]), float(unit)
+
+
+def _unit_diameter(metric: np.ndarray) -> np.ndarray:
+    diameter = np.max(metric)
+    return metric / diameter if diameter > 0 else metric
+
+
 def solve_covering_capacity_hierarchy(
     net: QuantumNetwork,
     cutting_plane_threshold_n: int = 10,
@@ -231,13 +250,14 @@ def solve_covering_capacity_hierarchy(
       For every spectral point phi, (sum t_f d_f)^2 <= t_tot * rho_cat0 * (sum s_e d_e^2),
       certifying an asymptotic L_2-bounded covering protocol of total ebits <= sqrt(s_tot * t_tot * rho_cat0).
     """
+    net, unit = _relative_rates(net)
     conic_solver = solver or choose_conic_solver()
     use_cp = net.num_parties > cutting_plane_threshold_n
 
-    rho_metric, _, _, _ = _solve_socp_ratio(
+    rho_metric, _, _, _, _ = _solve_socp_ratio(
         net, include_cat0=False, use_cutting_planes=False, solver=conic_solver
     )
-    rho_cat0, U_cat0, cp_rounds, n_bn = _solve_socp_ratio(
+    rho_cat0, U_cat0, cp_rounds, n_bn, converged = _solve_socp_ratio(
         net, include_cat0=True, use_cutting_planes=use_cp, solver=conic_solver
     )
     rho_euc, _, coords = _solve_euclidean_sdp_ratio(net, solver=conic_solver)
@@ -250,7 +270,7 @@ def solve_covering_capacity_hierarchy(
     ebit_euc = sqrt(max(0.0, s_tot * t_tot * rho_euc))
 
     D_cat0 = np.sqrt(np.maximum(U_cat0, 0.0))
-    audit = audit_metric_cat0(D_cat0)
+    audit = audit_metric_cat0(_unit_diameter(D_cat0))
 
     return CoveringCapacityResult(
         network_name=net.name,
@@ -259,16 +279,17 @@ def solve_covering_capacity_hierarchy(
         rho_metric=rho_metric,
         rho_cat0=rho_cat0,
         rho_euclidean=rho_euc,
-        ebit_budget_metric=ebit_metric,
-        ebit_budget_cat0=ebit_cat0,
-        ebit_budget_euclidean=ebit_euc,
+        ebit_budget_metric=ebit_metric * unit,
+        ebit_budget_cat0=ebit_cat0 * unit,
+        ebit_budget_euclidean=ebit_euc * unit,
         cat0_compression_ratio=ebit_metric / max(ebit_cat0, 1e-12),
         euclidean_vs_cat0_ratio=ebit_cat0 / max(ebit_euc, 1e-12),
         cutting_plane_rounds=cp_rounds,
         active_bn_constraints=n_bn,
-        witness_cat0_metric=D_cat0,
+        witness_cat0_metric=D_cat0 / sqrt(unit),
         witness_cat0_max_bn_violation=audit.max_berg_nikolaev_violation,
-        witness_euclidean_coords=coords,
+        witness_euclidean_coords=coords / sqrt(unit),
+        cat0_solver_converged=converged and audit.is_cat0_4pt,
     )
 
 
@@ -288,7 +309,7 @@ def _exact_min_cut_ratio(net: QuantumNetwork) -> Tuple[float, Optional[List[int]
             for (u, v), w in net.target_eprs.items():
                 if (u in in_a) != (v in in_a):
                     t_cut += w
-            if t_cut <= 1e-12:
+            if t_cut <= 0:
                 continue
             s_cut = 0.0
             for (u, v), w in net.source_eprs.items():
@@ -316,7 +337,7 @@ def _exact_min_cut_ratio(net: QuantumNetwork) -> Tuple[float, Optional[List[int]
         s_cut = cut_val + sum(
             g.rate for g in net.source_ghz if 0 < sum(1 for p in g.parties if p in in_a) < len(g.parties)
         )
-        if t_cut > 1e-12 and s_cut / t_cut < best_ratio:
+        if t_cut > 0 and s_cut / t_cut < best_ratio:
             best_ratio = s_cut / t_cut
             best_cut = sorted(in_a)
     return best_ratio, best_cut
@@ -382,7 +403,7 @@ def _is_cut_pseudometric(D: np.ndarray, tol: float = 1e-5) -> bool:
 
 def _evaluate_linear_ratio(net: QuantumNetwork, D: np.ndarray) -> float:
     denom = sum(w * D[u, v] for (u, v), w in net.target_eprs.items())
-    if denom <= 1e-12:
+    if denom <= 0:
         return float("inf")
     num = sum(w * D[u, v] for (u, v), w in net.source_eprs.items())
     is_cut = bool(net.source_ghz) and _is_cut_pseudometric(D)
@@ -412,8 +433,9 @@ def _search_cat0_candidates(
 
     def consider(D: np.ndarray) -> None:
         nonlocal best_ratio, best_D
-        if np.max(D) <= 1e-9:
+        if not np.isfinite(D).all() or np.max(D) <= 0:
             return
+        D = _unit_diameter(D)
         audit = audit_metric_cat0(D, tol=1e-4)
         if not audit.is_cat0_4pt:
             return
@@ -489,6 +511,8 @@ def check_slocc_feasibility(
 ) -> SLOCCFeasibilityResult:
     """Certify whether single-restriction asymptotic SLOCC S >=_asym T is forbidden or survives outer bounds."""
     notes: List[str] = []
+    original = net
+    net, _ = _relative_rates(net)
     min_cut_ratio, worst_cut = _exact_min_cut_ratio(net)
     metric_lp_ratio, D_lp = _metric_lp_ratio(net)
 
@@ -502,6 +526,7 @@ def check_slocc_feasibility(
                     D_cut[i, j] = 1.0
         seeds.append(D_cut)
 
+    D_lp = _unit_diameter(D_lp)
     lp_audit = audit_metric_cat0(D_lp, tol=1e-4)
     if lp_audit.is_cat0_4pt:
         seeds.append(D_lp)
@@ -514,14 +539,19 @@ def check_slocc_feasibility(
     cov_feasible = None
     cov = precomputed_covering
     if cov is None and run_covering_analysis:
-        cov = solve_covering_capacity_hierarchy(net)
+        cov = solve_covering_capacity_hierarchy(original)
     if cov is not None:
         seeds.append(cov.witness_cat0_metric)
         cov_budget = cov.ebit_budget_cat0
-        cov_feasible = net.total_source_ebits + tol >= cov_budget
+        available = original.total_source_ebits
+        margin = available - cov_budget
+        if cov.cat0_solver_converged and np.isfinite(cov_budget) and abs(margin) > tol * max(available, cov_budget):
+            cov_feasible = margin > 0
+        else:
+            notes.append("The numerical covering estimate is inconclusive at the requested precision.")
         if cov.cat0_compression_ratio > 1.001:
             notes.append(
-                f"CAT(0) Berg-Nikolaev bounds certify {cov.cat0_compression_ratio:.3f}x asymptotic "
+                f"The numerical covering model estimates {cov.cat0_compression_ratio:.3f}x asymptotic "
                 f"L2-covering ebit compression ({cov.ebit_budget_metric:.3f} -> {cov.ebit_budget_cat0:.3f} ebits)."
             )
 
@@ -558,8 +588,7 @@ def check_slocc_feasibility(
     if cov_feasible is True and verdict == "FORBIDDEN_BY_CUT":
         notes.append(
             f"NOTE: Although single SLOCC restriction fails cut ({min_cut_ratio:.3f} < 1), "
-            f"total source ebits ({net.total_source_ebits:.3f}) >= CAT(0) L2-cover budget ({cov_budget:.3f}), "
-            f"so asymptotic covering (Theorem A.6) IS achievable by switching unbalanced allocations!"
+            f"the source budget exceeds the modeled L2-cover estimate ({cov_budget:.6g} ebits)."
         )
 
     return SLOCCFeasibilityResult(

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import csv
+import hashlib
+import time
 import io
 import json
 import os
@@ -11,7 +13,9 @@ import re
 import subprocess
 import tempfile
 
-from .manifest import stage_project_files
+from ..config import load_spec_config
+from . import conformance as cases
+from .manifest import stage_project_files, verify_tcb_manifest
 
 
 def verify_isolated(project: Path, *, image: str, expected_digest: str,
@@ -40,18 +44,21 @@ def verify_isolated(project: Path, *, image: str, expected_digest: str,
         stage_project_files(root, inputs, include_lake_manifest=True)
         # The private parent protects host access. The container reads its
         # bind mount as a different, unprivileged UID.
-        inputs.chmod(0o755)
-        for entry in inputs.rglob("*"):
-            entry.chmod(0o755 if entry.is_dir() or entry.stat().st_mode & 0o111 else 0o644)
+        _make_readable(inputs)
         return _run_image(docker, inputs, image, expected_digest, conformance, dual_kernel)
 
 
-def _run_image(docker: str, root: Path, image: str, expected_digest: str, conformance: bool,
-               dual_kernel: bool) -> dict:
+def _make_readable(root: Path) -> None:
+    root.chmod(0o755)
+    for entry in root.rglob("*"):
+        entry.chmod(0o755 if entry.is_dir() or entry.stat().st_mode & 0o111 else 0o644)
+
+
+def _docker_command(docker: str, root: Path, image: str) -> list[str]:
     mount = io.StringIO()
     csv.writer(mount).writerow(["type=bind", f"source={root}", "target=/candidate",
                                 "readonly", "bind-recursive=disabled"])
-    cmd = [
+    return [
         docker, "run", "--rm", "--pull=never", "--network=none", "--read-only",
         "--cap-drop=ALL", "--security-opt=no-new-privileges", "--user=65534:65534",
         "--pids-limit=256", "--memory=4g", "--cpus=2", "--ulimit", "core=0",
@@ -59,12 +66,18 @@ def _run_image(docker: str, root: Path, image: str, expected_digest: str, confor
         "--env", "HOME=/tmp", "--mount", mount.getvalue().rstrip(),
         "--log-driver=none", "--workdir=/", "--entrypoint=/usr/bin/timeout", image,
         "--signal=KILL", "900", "/usr/local/bin/python",
-        "-I", "-m", "pcvh", "verify", "/candidate", "--trusted-local",
+        "-I", "-m",
+    ]
+
+
+def _run_image(docker: str, root: Path, image: str, expected_digest: str, conformance: bool,
+               dual_kernel: bool) -> dict:
+    started = time.monotonic()
+    cmd = _docker_command(docker, root, image) + [
+        "pcvh", "verify", "/candidate", "--trusted-local", "--skip-conformance",
         "--lean-bin", "/opt/lean/bin", "--expected-spec-sha256", expected_digest,
         "--attestation", "/tmp/result.json", "--json",
     ]
-    if not conformance:
-        cmd.append("--skip-conformance")
     if dual_kernel:
         cmd.append("--require-dual-kernel")
     try:
@@ -76,9 +89,45 @@ def _run_image(docker: str, root: Path, image: str, expected_digest: str, confor
     report = json.loads(run.stdout)
     if not isinstance(report, dict) or report.get("schema") != "pcvh.attestation.v1":
         raise ValueError("Isolated verifier returned an invalid attestation.")
+    if (not isinstance(report.get("checks"), dict) or
+            report["checks"].get("differential_conformance") not in (None, "SKIPPED_BY_REQUEST")):
+        raise ValueError("The proof worker returned unexpected conformance evidence")
     if run.returncode == 0 and (report.get("verdict") != "VERIFIED"
                                 or report.get("spec_bundle_sha256") != expected_digest):
         raise ValueError("Isolated verifier returned an inconsistent success result.")
     if run.returncode == 1 and report.get("verdict") != "REJECTED":
         raise ValueError("Isolated verifier did not return a rejection.")
+    if report["verdict"] != "VERIFIED" or not conformance:
+        return report
+    cfg = load_spec_config(root)
+    manifest = verify_tcb_manifest(cfg)
+    if not manifest.ok or manifest.spec_bundle_sha256 != expected_digest:
+        raise ValueError("Conformance inputs disagree with the independently reviewed pin")
+    if not cfg.conformance_command:
+        return report
+    try:
+        cases.check_policy(cfg)
+        oracle = root.parent / "oracle"
+        cases.stage_oracle(root, manifest, oracle)
+        _make_readable(oracle)
+        worker = "pcvh.tcb.conformance"
+        producer = _docker_command(docker, root, image) + [worker, "emit", "/candidate"]
+        data = cases.check_transcript(cfg, cases.capture_records(producer, cwd=root.parent))
+        # The oracle container receives only verified policy files and the
+        # host-checked transcript. It shares no writable state with the candidate.
+        cmd = _docker_command(docker, oracle, image)
+        cmd.insert(2, "--interactive")
+        check = subprocess.run(cmd + [worker, "replay", "/candidate"], cwd=root.parent,
+                               input=data, capture_output=True, timeout=960)
+        if check.returncode:
+            raise ValueError(f"Independent oracle failed: {check.stderr[-600:].decode(errors='replace')}")
+        summary = cases.confirmed_summary(cfg, check.stdout.decode("utf-8"))
+        report["checks"]["differential_conformance"] = f"PASS ({summary})"
+    except (ValueError, OSError, subprocess.SubprocessError) as exc:
+        report["checks"]["differential_conformance"] = f"FAIL ({exc})"
+        report["failure_reasons"].append(f"Differential conformance failed: {exc}")
+        report["verdict"] = "REJECTED"
+    report["duration_s"] = round(time.monotonic() - started, 3)
+    report.pop("attestation_sha256", None)
+    report["attestation_sha256"] = hashlib.sha256(json.dumps(report, sort_keys=True).encode()).hexdigest()
     return report

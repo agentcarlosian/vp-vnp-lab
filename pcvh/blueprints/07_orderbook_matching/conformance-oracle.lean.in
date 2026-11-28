@@ -1,0 +1,36 @@
+
+import Specs.OrderBook.Statement
+open OrderBook
+
+def pNat! (s : String) : Nat := s.trimAscii.toString.toNat!
+
+#eval do
+  let raw ← IO.FS.readFile "{DATA_FILE}"
+  let lines : List String := (raw.splitOn "\n").map (fun (s : String) => s.trimAscii.toString) |>.filter (fun (s : String) => !s.isEmpty)
+  let mut ok := 0
+  for line in lines do
+    match line.splitOn "|" with
+    | [sBidP, sBidQ, sAskP, sAskQ, sSeq,
+       sExpFill, sExpExecP, sExpRemBid, sExpRemAsk, sExpNextSeq,
+       sBuyQ, sSellQ, sVaultQ, sNotional, sFee,
+       sExpSettled, sExpBuyQ, sExpSellQ, sExpVaultQ,
+       sColl, sPosNotional, sMaintBps, sExpLiq] =>
+      let bid : Order := { id := 1, seq := pNat! sSeq, price := pNat! sBidP, qty := pNat! sBidQ }
+      let ask : Order := { id := 2, seq := (pNat! sSeq) - 1, price := pNat! sAskP, qty := pNat! sAskQ }
+      let m := matchBidAsk bid ask (pNat! sSeq)
+      if m.fillQty != pNat! sExpFill || m.execPrice != pNat! sExpExecP ||
+         m.remBidQty != pNat! sExpRemBid || m.remAskQty != pNat! sExpRemAsk || m.nextSeq != pNat! sExpNextSeq then
+        throw (IO.userError s!"MATCH MISMATCH at trace {ok}")
+
+      let b0 : QuoteBalances := { buyerQuote := pNat! sBuyQ, sellerQuote := pNat! sSellQ, feeVault := pNat! sVaultQ }
+      let (settled, nb) := settleQuote b0 (pNat! sNotional) (pNat! sFee)
+      if settled != (pNat! sExpSettled == 1) || nb.buyerQuote != pNat! sExpBuyQ ||
+         nb.sellerQuote != pNat! sExpSellQ || nb.feeVault != pNat! sExpVaultQ then
+        throw (IO.userError s!"SETTLE MISMATCH at trace {ok}")
+
+      let liq := isLiquidatable (pNat! sColl) (pNat! sPosNotional) (pNat! sMaintBps)
+      if liq != (pNat! sExpLiq == 1) then
+        throw (IO.userError s!"LIQUIDATION MISMATCH at trace {ok}")
+      ok := ok + 1
+    | _ => throw (IO.userError s!"Malformed row: {line}")
+  IO.println s!"{ok}/{lines.length} Rust OrderBook+Margin differential traces matched bit-for-bit"

@@ -50,13 +50,13 @@ def cmd_check(args: argparse.Namespace) -> int:
     print(f"=== Quantum-Network CAT(0) Feasibility Check: {net.name} (n={net.num_parties}) ===")
     if net.description:
         print(f"Description: {net.description}")
-    print(f"Source ebits: {net.total_source_ebits:.3f} | Target ebits: {net.total_target_ebits:.3f}")
+    print(f"Source ebits: {net.total_source_ebits:.6g} | Target ebits: {net.total_target_ebits:.6g}")
     print(f"Solver:       CVXPY ({cov.solver}) | BN constraints: {cov.active_bn_constraints} (rounds={cov.cutting_plane_rounds})")
     print()
     print("  1. Asymptotic L2-Covering Capacity Hierarchy (Theorem C.1 + Strassen Duality):")
-    print(f"     Metric Cone (triangle only):     rho={cov.rho_metric:.5f}  ->  budget <= {cov.ebit_budget_metric:.4f} ebits")
-    print(f"     CAT(0) Cone (Berg-Nikolaev):     rho={cov.rho_cat0:.5f}  ->  budget <= {cov.ebit_budget_cat0:.4f} ebits")
-    print(f"     Euclidean Cone (Schoenberg SDP): rho={cov.rho_euclidean:.5f}  ->  budget <= {cov.ebit_budget_euclidean:.4f} ebits")
+    print(f"     Metric Cone (triangle only):     rho={cov.rho_metric:.5f}  ->  modeled budget {cov.ebit_budget_metric:.6g} ebits")
+    print(f"     CAT(0) Cone (Berg-Nikolaev):     rho={cov.rho_cat0:.5f}  ->  modeled budget {cov.ebit_budget_cat0:.6g} ebits")
+    print(f"     Euclidean Cone (Schoenberg SDP): rho={cov.rho_euclidean:.5f}  ->  modeled budget {cov.ebit_budget_euclidean:.6g} ebits")
     print(f"     CAT(0) compression vs triangle:  {cov.cat0_compression_ratio:.4f}x  (witness max BN viol={cov.witness_cat0_max_bn_violation:.2e})")
     if cov.euclidean_vs_cat0_ratio > 1.001:
         print(f"     Non-Euclidean CAT(0) gap vs R^d: {cov.euclidean_vs_cat0_ratio:.4f}x (hyperbolic/tree/rank strictly looser than flat!)")

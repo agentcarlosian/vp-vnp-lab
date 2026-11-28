@@ -1,0 +1,39 @@
+
+import Specs.AgentGuard.Statement
+open AgentGuard
+
+def pNat! (s : String) : Nat := s.trimAscii.toString.toNat!
+
+def parseCall (tok : String) : IO ToolCall :=
+  match tok.splitOn ":" with
+  | [sScope, sTrav, sDest, sApp, sCost, sKill] =>
+    pure { scopeId := pNat! sScope,
+           isPathTraversal := pNat! sTrav == 1,
+           isDestructive := pNat! sDest == 1,
+           hasHumanApproval := pNat! sApp == 1,
+           costCents := pNat! sCost,
+           tripKillSwitch := pNat! sKill == 1 }
+  | _ => throw (IO.userError s!"Malformed call: {tok}")
+
+#eval do
+  let raw ← IO.FS.readFile "{DATA_FILE}"
+  let lines : List String := (raw.splitOn "\n").map (fun (s : String) => s.trimAscii.toString) |>.filter (fun (s : String) => !s.isEmpty)
+  let mut ok := 0
+  for line in lines do
+    match line.splitOn "|" with
+    | [sBud, sMaxC, sScope, sCalls, sExpDecs, sExpSpent, sExpCnt, sExpHalt] =>
+      let pol : Policy := { maxBudgetCents := pNat! sBud, maxCalls := pNat! sMaxC, allowedScopeId := pNat! sScope }
+      let calls ← (sCalls.splitOn ",").mapM parseCall
+      let expDecs : List Nat := (sExpDecs.splitOn ",").map pNat!
+      let mut st : GuardState := { spentCents := 0, callCount := 0, halted := false }
+      let mut decs : List Nat := []
+      for c in calls do
+        let (d, st') := evalToolCall pol st c
+        st := st'
+        decs := decs ++ [d.code]
+      let sf := execTrace pol { spentCents := 0, callCount := 0, halted := false } calls
+      if decs != expDecs || st != sf || sf.spentCents != pNat! sExpSpent || sf.callCount != pNat! sExpCnt || sf.halted != (pNat! sExpHalt == 1) then
+        throw (IO.userError s!"AGENT GUARD MISMATCH at trace {ok}")
+      ok := ok + 1
+    | _ => throw (IO.userError s!"Malformed row: {line}")
+  IO.println s!"{ok}/{lines.length} TypeScript AI Agent Guardrail 12-step traces matched bit-for-bit"

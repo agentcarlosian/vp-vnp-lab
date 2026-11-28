@@ -13,4 +13,6 @@ nonvacuity_suffix = "nonvacuous"
 forbid_umbrella_imports = ["Mathlib", "Mathlib.Tactic", "Mathlib.All"]
 
 [conformance]
+traces = 1000
+transcript_sha256 = "d8706fcb1e0936a9c2d1b87956433bfcbf547332c0d23fa5ef3332fc907629ca"
 command = "python conformance_fuzz.py --traces 1000 --steps-per-trace 10"

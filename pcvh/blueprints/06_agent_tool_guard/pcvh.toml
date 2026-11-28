@@ -24,4 +24,6 @@ auto_lake_shake = true
 forbid_umbrella_imports = ["Mathlib", "Mathlib.Tactic", "Mathlib.All"]
 
 [conformance]
+traces = 1000
+transcript_sha256 = "078f37edb815b050f58cb686faff8f8c2266e9312b6a72c40edcbc84d90931e7"
 command = "python conformance_fuzz.py --traces 1000"

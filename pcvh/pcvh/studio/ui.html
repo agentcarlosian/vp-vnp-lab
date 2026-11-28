@@ -903,12 +903,17 @@
     let activeJobTimer = null;
     let lastStudioPubKey = "";
     let fileDiagnostics = {};
-    const STUDIO_CSRF_TOKEN = document.querySelector('meta[name="pcvh-csrf-token"]')?.content || "";
-    function postHeaders() {
-      return {
-        "Content-Type": "application/json",
-        "X-PCVH-Token": STUDIO_CSRF_TOKEN,
-      };
+    const launchToken = new URLSearchParams(location.hash.slice(1)).get("token");
+    if (launchToken) {
+      sessionStorage.setItem("pcvh-session", launchToken);
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+    const sessionToken = sessionStorage.getItem("pcvh-session") || "";
+    function requestAPI(path, options = {}) {
+      const headers = new Headers(options.headers);
+      headers.set("X-PCVH-Token", sessionToken);
+      if (options.body) headers.set("Content-Type", "application/json");
+      return fetch(path, { ...options, headers, redirect: "error" });
     }
 
     const TOKEN_RE = /\b(theorem|lemma|def|private|structure|inductive|where|by|sorry|have|let|in|if|then|else|match|with|induction|generalizing|rcases|unfold|simp|simp_all|omega|grind|rw|exact|all_goals|try|open|namespace|end|export|function|interface|return|pub|fn|struct|impl|use|class|self|import|from)\b|\b(Nat|Int|Bool|String|List|Prop|IO|Unit|Decision|DecisionCode|Policy|GuardState|ToolCall|Order|MatchOutcome|QuoteBalances|ReplayWindow|Expr|ValidatorVote|LedgerState|TransferEvent|StepResult|SqMetric|Q3Cat0|u64|u128|usize|bool|int|uint256)\b|\b(\d[\d_]*)\b/g;
@@ -977,7 +982,7 @@
     }
 
     async function loadOverview() {
-      const resp = await fetch("/api/overview");
+      const resp = await requestAPI("/api/overview");
       overview = await resp.json();
 
       const telLean = document.getElementById("tel-lean");
@@ -1054,7 +1059,7 @@
     async function selectProject(pid) {
       currentProj = pid;
       renderProjectList();
-      const resp = await fetch("/api/project?id=" + encodeURIComponent(pid));
+      const resp = await requestAPI("/api/project?id=" + encodeURIComponent(pid));
       currentDetail = await resp.json();
       fileDiagnostics = {};
 
@@ -1246,9 +1251,8 @@
       if (!currentProj || !activeFile) return;
       const content = document.getElementById("code-editor").value;
       const allowTcb = document.getElementById("chk-allow-tcb").checked;
-      const resp = await fetch("/api/file", {
+      const resp = await requestAPI("/api/file", {
         method: "POST",
-        headers: postHeaders(),
         body: JSON.stringify({ project_id: currentProj, path: activeFile, content, allow_tcb: allowTcb }),
       });
       const data = await resp.json();
@@ -1277,10 +1281,9 @@
         if (contentOverride !== null && contentOverride !== undefined) {
           payload.content = contentOverride;
         }
-        const resp = await fetch("/api/lsp/goals", {
+        const resp = await requestAPI("/api/lsp/goals", {
           method: "POST",
-          headers: postHeaders(),
-          body: JSON.stringify(payload),
+            body: JSON.stringify(payload),
         });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || resp.statusText);
@@ -1408,9 +1411,8 @@
 
     async function signCurrentProject() {
       if (!currentProj) return;
-      const resp = await fetch("/api/sign", {
+      const resp = await requestAPI("/api/sign", {
         method: "POST",
-        headers: postHeaders(),
         body: JSON.stringify({ project_id: currentProj }),
       });
       const data = await resp.json();
@@ -1428,9 +1430,8 @@
     async function verifySignature() {
       const pem = document.getElementById("sig-pub-pem").value.trim();
       const out = document.getElementById("sig-result");
-      const resp = await fetch("/api/verify-sig", {
+      const resp = await requestAPI("/api/verify-sig", {
         method: "POST",
-        headers: postHeaders(),
         body: JSON.stringify({ project_id: currentProj, public_key_pem: pem }),
       });
       const data = await resp.json();
@@ -1461,7 +1462,7 @@
     async function selectJobFromHistory(jid) {
       if (!jid) return;
       activeJobId = jid;
-      const jr = await fetch("/api/job?id=" + encodeURIComponent(jid));
+      const jr = await requestAPI("/api/job?id=" + encodeURIComponent(jid));
       if (jr.ok) showJob(await jr.json());
     }
 
@@ -1472,9 +1473,8 @@
         llm_provider: document.getElementById("opt-llm").value,
       };
       switchInspector("jobs");
-      const resp = await fetch("/api/action", {
+      const resp = await requestAPI("/api/action", {
         method: "POST",
-        headers: postHeaders(),
         body: JSON.stringify({ project_id: currentProj, action, options }),
       });
       const job = await resp.json();
@@ -1486,7 +1486,7 @@
       showJob(job);
       if (activeJobTimer) clearInterval(activeJobTimer);
       activeJobTimer = setInterval(async () => {
-        const jr = await fetch("/api/job?id=" + encodeURIComponent(job.job_id));
+        const jr = await requestAPI("/api/job?id=" + encodeURIComponent(job.job_id));
         const cur = await jr.json();
         showJob(cur);
         if (cur.status === "succeeded" || cur.status === "failed") {
@@ -1520,9 +1520,8 @@
         notify("Enter a relative directory name.", "err");
         return;
       }
-      const resp = await fetch("/api/init", {
+      const resp = await requestAPI("/api/init", {
         method: "POST",
-        headers: postHeaders(),
         body: JSON.stringify({ dir, language, template }),
       });
       const data = await resp.json();
@@ -1536,7 +1535,8 @@
       await selectProject(dir.replace(/\\/g, "/"));
     }
 
-    loadOverview();
+    if (sessionToken) loadOverview();
+    else notify("Open the Studio launch URL from your terminal.", "err");
   </script>
 </body>
 </html>

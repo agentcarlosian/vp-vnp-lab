@@ -1,15 +1,16 @@
 {
   "schema": "pcvh.spec-lock.v2",
   "name": "blueprint03-ast-peephole-optimizer",
-  "pinned_at": "2026-11-25T02:48:14.649595+00:00",
-  "spec_bundle_sha256": "a9d1dd8d2edc0467b6fd20ba43a90204c5eadf6e3561e9e59e773f3f2b6edc45",
+  "pinned_at": "2026-11-28T16:28:36.899491+00:00",
+  "spec_bundle_sha256": "e4f6ec2a1ccd696f52baa791d38c28b56657b332f73dc42fda56197fa2deffa1",
   "files": {
-    "pcvh.toml": "a7053fafd12d912f237e3f61e101e9ed8260ba0aa61a392451a02c684ee0813d",
+    "pcvh.toml": "7c0897d49f2591d3450385747bab2f4449c1dd54914180ffe057aa1171b89049",
     "lean-toolchain": "3aac669c7a910ec2389f4e4f921b605adf6ebf2d1e0c9b9cd0be4d33f3f5db71",
     "Specs/IrOpt/Statement.lean": "daff569b069ec31a0a8fc089e0460579454a0362355715c357ebc57dfd4e9b85",
     "Specs/IrOpt/Challenge.lean": "679d341e348554e3d4786aa362ebde5696a1ec23527b753e27aaf0333829104b",
     "lakefile.toml": "d5abf58232da84e8bce5c1d9589e5ff88e290f7114518b5f9df99fe47e4020ec",
     "lake-manifest.json": "2863a79595dd60a5fa74561769b187468244539beac2e87cc658faebac2f6642",
-    "conformance_fuzz.py": "027679007d241e5a4370d775c7d712bf654ec29b9b0b5e5ec91bae66f1f8cff5"
+    "conformance_fuzz.py": "f9986bc19ef11b47d58ccde749cde53238c89a0e48f08711f3b8c068d1967101",
+    "conformance-oracle.lean.in": "87de3a642ee8f064e1379bebbbed934dc8cab7fae34f7a422bf01acca359cd66"
   }
 }

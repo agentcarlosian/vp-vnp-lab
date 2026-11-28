@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-25T03:04:35.862281+00:00",
+  "timestamp_utc": "2026-11-28T16:34:56.069359+00:00",
   "spec_name": "blueprint03-ast-peephole-optimizer",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "a9d1dd8d2edc0467b6fd20ba43a90204c5eadf6e3561e9e59e773f3f2b6edc45",
+  "spec_bundle_sha256": "e4f6ec2a1ccd696f52baa791d38c28b56657b332f73dc42fda56197fa2deffa1",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "iropt_spec_nonvacuous",
@@ -28,6 +28,6 @@
     "differential_conformance": "PASS (500/500 IR Peephole AST differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 19.905,
-  "attestation_sha256": "33bc4484fdd56375e8e68c9e3fed04989fd93e8f272f27e297b03f1e1989f2ec"
+  "duration_s": 17.045,
+  "attestation_sha256": "2a99355ab82b63879fc65acb799271c9a4b71501914bdd649c9ba19e7f16cc29"
 }

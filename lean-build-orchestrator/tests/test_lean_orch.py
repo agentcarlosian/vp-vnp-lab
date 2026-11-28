@@ -313,3 +313,49 @@ def test_live_lean4_non_module_fallback_shake_e2e(tmp_path: pathlib.Path):
     assert shake_res.rolled_back_files == []
     assert "Mini.Unused" not in app_src
     assert "Mini.Used" in app_src
+
+@pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean toolchain missing")
+def test_partial_dependency_rebuild_invalidates_client(tmp_path):
+    import subprocess
+
+    (tmp_path / "Mini").mkdir()
+    (tmp_path / "lean-toolchain").write_text("leanprover/lean4:v4.33.1\n")
+    (tmp_path / "lakefile.toml").write_text('name = "mini"\n[[lean_lib]]\nname = "Mini"\n')
+    base = tmp_path / "Mini" / "Base.lean"
+    base.write_text("def baseValue : Nat := 1\n")
+    (base.parent / "Client.lean").write_text("import Mini.Base\ndef clientValue : Nat := baseValue\n")
+    lake = LOCAL_LEAN_BIN / ("lake.exe" if os.name == "nt" else "lake")
+    subprocess.run([str(lake), "build", "Mini.Client"], cwd=tmp_path, check=True)
+    cached = analyze_project(tmp_path)
+    assert cached.nodes["Mini.Client"].olean_fresh
+    base.write_text('def baseValue : String := "changed"\n')
+    subprocess.run([str(lake), "build", "Mini.Base"], cwd=tmp_path, check=True)
+    dag = analyze_project(tmp_path)
+    assert dag.nodes["Mini.Base"].olean_fresh and not dag.nodes["Mini.Client"].olean_fresh
+    result = CommitAwareScheduler(dag, SchedulerConfig(lean_bin=LOCAL_LEAN_BIN)).run(["Mini.Client"])
+    assert "Mini.Client" in result.failed_modules
+    # A caller can retain a DAG across this dependency edit. Lake checks the
+    # requested root even when that original snapshot still looks fresh.
+    assert "Mini.Client" in CommitAwareScheduler(cached, SchedulerConfig(lean_bin=LOCAL_LEAN_BIN)).run(["Mini.Client"]).failed_modules
+
+@pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean toolchain missing")
+def test_shake_restores_the_edited_dependency_on_consumer_failure(tmp_path):
+    import subprocess
+
+    mini = tmp_path / "Mini"
+    mini.mkdir()
+    (tmp_path / "lean-toolchain").write_text("leanprover/lean4:v4.33.1\n")
+    (tmp_path / "lakefile.toml").write_text('name = "mini"\n[[lean_lib]]\nname = "Mini"\n')
+    (mini / "Base.lean").write_text("def baseValue : Nat := 1\n")
+    middle = mini / "Middle.lean"
+    middle.write_text("import Mini.Base\ndef marker : Nat := 2\n")
+    original = middle.read_bytes()
+    (mini / "Client.lean").write_text("import Mini.Middle\ndef client : Nat := marker + baseValue\n")
+    lake = LOCAL_LEAN_BIN / ("lake.exe" if os.name == "nt" else "lake")
+    command = [str(lake), "build", "Mini.Client"]
+    subprocess.run(command, cwd=tmp_path, check=True)
+    result = run_lake_shake(analyze_project(tmp_path), ["Mini.Client"], apply_fix=True, lean_bin=LOCAL_LEAN_BIN)
+    assert result.returncode != 0
+    assert "Mini.Middle" in result.rolled_back_files
+    assert middle.read_bytes() == original
+    subprocess.run(command, cwd=tmp_path, check=True)

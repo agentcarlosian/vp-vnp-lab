@@ -1,9 +1,9 @@
 {
   "schema": "pcvh.attestation.v1",
-  "timestamp_utc": "2026-11-25T03:05:51.013366+00:00",
+  "timestamp_utc": "2026-11-28T16:35:52.950763+00:00",
   "spec_name": "blueprint08-zk-gadgets-and-replay-window",
   "verdict": "VERIFIED",
-  "spec_bundle_sha256": "6052290d01aa0535e1ea43ea495b7207edf167d6659375f8998e60322e19bd9b",
+  "spec_bundle_sha256": "17a3b66e01e688d8c43034263ba644ec26b43c7d04cdcb0548e4ead53172a457",
   "toolchain": "leanprover/lean4:v4.33.1",
   "verified_theorems": [
     "replay_highest_monotone",
@@ -31,6 +31,6 @@
     "differential_conformance": "PASS (1000/1000 ZK+ReplayWindow 64-bit differential traces matched bit-for-bit)"
   },
   "failure_reasons": [],
-  "duration_s": 14.065,
-  "attestation_sha256": "549d8c283e1b9957c37fc3a9ea5d651ca9c34910ce445e373050f89e5dfe0c86"
+  "duration_s": 11.314,
+  "attestation_sha256": "a40bd6b47c5a519283575685036f0f1359d486cf9568c4fab5e21dca2c365e5e"
 }

@@ -22,6 +22,22 @@ Zero-trust Palomar-style Spec → Proof agentic verification harness inspired by
 
 The native suite and Docker integration run include Lean 4.33.1 proof checks. See the [CI workflow](../.github/workflows/ci.yml) for the jobs and their exact commands.
 
+### Conformance evidence
+
+The reviewed policy pins a positive trace count, a SHA-256 digest of the ordered input/output records, and `conformance-oracle.lean.in`. A producer invoked with `PCVH_EMIT_TRACES=1` writes one UTF-8 record per line, with a 16 MiB transcript limit. The verifier requires every reviewed record in order, canonicalizes CRLF to LF, and replays the data against the pinned Lean specification. In isolated mode the producer and the oracle have separate containers. Only the reviewed specification files and validated data reach the oracle. These deterministic cases provide regression evidence for the exercised inputs. A proof-only run records a configured conformance check as `SKIPPED_BY_REQUEST`.
+
+For an existing project, review the generator, its inputs, its implementation and the Lean oracle first. From a trusted repository checkout run:
+
+```sh
+python scripts/review_conformance_reference.py /path/to/reviewed-reference --traces 500
+```
+
+Place the printed `traces` and `transcript_sha256` in the reference's `[conformance]` table, then run `pcvh pin` and distribute the new specification digest independently. The review command executes the supplied reference locally. Projects using a legacy success-only conformance command must supply the trace producer and oracle before issuing new conformance attestations.
+
+### Studio signing keys
+
+Open the per-launch URL printed by Studio. Its fragment supplies a per-session API token to the browser tab. The public HTML omits the token. Studio keeps one keypair per workspace under the user's application data directory. Set `PCVH_STUDIO_KEY_DIR` to choose a private directory outside the workspace. Studio uses a new identity on first signing after upgrading from workspace-local keys. Historical signatures remain verifiable with the original public key. Keep any legacy private key you intend to retain in private storage. Studio's file endpoints accept project sources and verification artifacts and exclude hidden directories and linked files.
+
 ### Verify a CI evidence bundle
 
 Download the `pcvh-dual-kernel-<commit>-<run-id>-<attempt>` artifact from a successful

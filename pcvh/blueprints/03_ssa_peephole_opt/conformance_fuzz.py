@@ -63,44 +63,7 @@ def serialize_rpn(e: Expr) -> str:
     return f"{serialize_rpn(e.a)},{serialize_rpn(e.b)},{tag}"
 
 
-_LEAN_RUNNER = r"""
-import Specs.IrOpt.Statement
-open IrOpt
-
-def pInt! (s : String) : Int := s.trimAscii.toString.toInt!
-def pNat! (s : String) : Nat := s.trimAscii.toString.toNat!
-
-def parseRpn (s : String) : Expr :=
-  let toks := s.splitOn ","
-  let st := toks.foldl (fun (stk : List Expr) (t : String) =>
-    if t.startsWith "C:" then Expr.const (pInt! (t.drop 2).toString) :: stk
-    else if t.startsWith "V:" then Expr.var (pNat! (t.drop 2).toString) :: stk
-    else match t, stk with
-      | "A", b :: a :: rest => Expr.add a b :: rest
-      | "S", b :: a :: rest => Expr.sub a b :: rest
-      | "M", b :: a :: rest => Expr.mul a b :: rest
-      | _, stk => stk) []
-  st.headD (Expr.const 0)
-
-#eval do
-  let raw ← IO.FS.readFile "{DATA_FILE}"
-  let lines := (raw.splitOn "\n").filter (fun (l : String) => !l.trimAscii.isEmpty)
-  let mut ok : Nat := 0
-  for line in lines do
-    match line.splitOn "|" with
-    | [rpn, sEnv, sExpVal, sExpSz] =>
-      let envVals := (sEnv.splitOn ",").map pInt!
-      let env : Nat → Int := fun r => envVals.getD r 0
-      let e := parseRpn rpn
-      let oe := optPass e
-      let v := eval env oe
-      let sz := exprSize oe
-      if v != eval env e || v != pInt! sExpVal || sz != pNat! sExpSz || sz > exprSize e then
-        throw (IO.userError s!"MISMATCH at AST {ok}: v={v} exp={sExpVal} sz={sz} expSz={sExpSz}")
-      ok := ok + 1
-    | _ => throw (IO.userError s!"Malformed line: {line}")
-  IO.println s!"{ok}/{lines.length} IR Peephole AST differential traces matched bit-for-bit"
-"""
+_LEAN_RUNNER = pathlib.Path(__file__).with_name("conformance-oracle.lean.in").read_text(encoding="utf-8")
 
 
 def main() -> int:
@@ -126,6 +89,10 @@ def main() -> int:
         v_opt = eval_expr(env_map, oe)
         assert v_orig == v_opt and expr_size(oe) <= expr_size(e)
         rows.append(f"{serialize_rpn(e)}|{','.join(str(x) for x in reg_vals)}|{v_opt}|{expr_size(oe)}")
+
+    if os.environ.get("PCVH_EMIT_TRACES") == "1":
+        sys.stdout.write("\n".join(rows) + "\n")
+        return 0
 
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
         tf.write("\n".join(rows) + "\n")

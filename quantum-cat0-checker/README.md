@@ -53,3 +53,5 @@ a matching primal witness is not produced. The standalone Lean export checks a
 denominator-cleared inequality for integer edge variables under its stated
 nonnegativity and geometry assumptions. It does not itself certify real-valued
 premises or optimality.
+
+Numerical verdicts use rates relative to a common unit and validate four-point candidates at unit diameter. Covering budgets are reported in the original units. The covering flag compares a numerical model estimate with the available budget: `true` or `false` requires a resolved relative margin; `null` indicates an inconclusive comparison or omitted covering analysis. A numerical budget estimate alone does not certify a covering protocol.

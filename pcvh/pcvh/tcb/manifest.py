@@ -22,7 +22,7 @@ def sha256_file(path: pathlib.Path) -> str:
     h = hashlib.sha256()
     # Normalize CRLF -> LF when hashing text spec files so Windows/Linux CI match identically
     data = path.read_bytes()
-    if path.name == "lean-toolchain" or path.suffix in {".py", ".lean", ".toml", ".json"}:
+    if path.name in {"lean-toolchain", "conformance-oracle.lean.in"} or path.suffix in {".py", ".lean", ".toml", ".json"}:
         data = data.replace(b"\r\n", b"\n")
     h.update(data)
     return h.hexdigest()

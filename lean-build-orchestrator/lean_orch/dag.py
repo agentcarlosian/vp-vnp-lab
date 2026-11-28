@@ -414,6 +414,7 @@ def analyze_project(
 
     umbrella_set = tuple(umbrella_patterns)
     nodes: Dict[str, ModuleNode] = {}
+    artifact_times: Dict[str, int] = {}
     for mod, fp in sorted(local_files.items()):
         txt = fp.read_text(encoding="utf-8", errors="replace")
         imps = parse_imports(txt)
@@ -433,7 +434,8 @@ def analyze_project(
         olean_fresh = False
         if olean_exists:
             try:
-                olean_fresh = olean_fp.stat().st_mtime >= fp.stat().st_mtime
+                artifact_times[mod] = olean_fp.stat().st_mtime_ns
+                olean_fresh = artifact_times[mod] >= fp.stat().st_mtime_ns
             except OSError:
                 olean_fresh = False
 
@@ -489,7 +491,7 @@ def analyze_project(
             for d in node.local_deps:
                 t_umb |= nodes[d].transitive_umbrellas
                 t_ext |= trans_ext.get(d, set())
-                if not nodes[d].olean_fresh:
+                if not nodes[d].olean_fresh or artifact_times.get(d, 0) > artifact_times.get(m, 0):
                     all_deps_fresh = False
             node.transitive_umbrellas = t_umb
             trans_ext[m] = t_ext

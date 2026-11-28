@@ -108,7 +108,7 @@ def test_phase6_solidity_foundry_adapter_init_prove_and_conformance_e2e(tmp_path
     res = run_autonomous_prove_pipeline(cfg, lean_bin=LOCAL_LEAN_BIN, parallel_workers=2)
     assert res.status == "VERIFIED", f"Solidity adapter pipeline failed: {res.to_dict()}"
     assert res.gate_result is not None and res.gate_result.verdict == "VERIFIED"
-    assert "500/500 Solidity/Foundry differential traces matched bit-for-bit" in res.gate_result.checks["differential_conformance"]
+    assert "500/500 Solidity uint256 model differential traces matched bit-for-bit" in res.gate_result.checks["differential_conformance"]
 
 
 # ==============================================================================
@@ -428,8 +428,9 @@ def _http_json(
 
 
 @pytest.mark.skipif(LOCAL_LEAN_BIN is None, reason="Lean 4 toolchain missing")
-def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
+def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path, monkeypatch):
     """Spin up live `pcvh studio` server and verify UI HTML, overview, project view, live Lean LSP, async verify job, signing & security."""
+    monkeypatch.setenv("PCVH_STUDIO_KEY_DIR", str(tmp_path / "studio-keys"))
     ws_root = tmp_path / "studio_ws"
     ws_root.mkdir()
 
@@ -447,7 +448,7 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
             html = resp.read().decode("utf-8")
             assert resp.status == 200
             assert "PCVH Studio" in html and "$/lean/plainGoal" in html
-            assert srv.studio_state.csrf_token in html
+            assert srv.studio_state.csrf_token not in html
         with _NO_PROXY_OPENER.open(f"{base}/showcase", timeout=10) as resp:
             assert resp.status == 200 and b"Eight Machine-Checked Engineering Specifications" in resp.read()
         with _NO_PROXY_OPENER.open(f"{base}/eval", timeout=10) as resp:
@@ -462,18 +463,18 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
         assert code == 201 and init_res["pinned"] is True
 
         # 3. GET /api/overview discovers the scaffolded project & reports Lean + memory + LLM providers
-        code, ov = _http_json(f"{base}/api/overview")
+        code, ov = _http_json(f"{base}/api/overview", headers=auth_hdr)
         assert code == 200
         assert ov["lean_bin"] is not None
         assert any(p["id"] == "demo_ledger" for p in ov["projects"])
 
         # 4. GET /api/project returns spec files & TCB status
-        code, det = _http_json(f"{base}/api/project?id=demo_ledger")
+        code, det = _http_json(f"{base}/api/project?id=demo_ledger", headers=auth_hdr)
         assert code == 200 and det["tcb_ok"] is True
         assert "Specs/LedgerCore/Challenge.lean" in det["files"]
 
         # 5. Path-traversal attack is rejected with 400
-        code_bad, _ = _http_json(f"{base}/api/project?id=../../outside")
+        code_bad, _ = _http_json(f"{base}/api/project?id=../../outside", headers=auth_hdr)
         assert code_bad == 400
 
         # 6. POST /api/lsp/goals queries live Lean 4.33.1 LSP at the `sorry` line in Challenge.lean!
@@ -498,7 +499,7 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
         deadline = time.time() + 120.0
         final_job = job
         while time.time() < deadline:
-            _, final_job = _http_json(f"{base}/api/job?id={job['job_id']}")
+            _, final_job = _http_json(f"{base}/api/job?id={job['job_id']}", headers=auth_hdr)
             if final_job["status"] in ("succeeded", "failed"):
                 break
             time.sleep(0.5)
@@ -517,7 +518,7 @@ def test_phase6_studio_web_ui_rest_lsp_and_action_jobs(tmp_path: pathlib.Path):
         assert code == 200 and sig_res["ok"] is True
 
         # Verify synthesized `Solution/Lem_*.lean` and `target.py` are exposed in Studio tabs
-        _, det_after = _http_json(f"{base}/api/project?id=demo_ledger")
+        _, det_after = _http_json(f"{base}/api/project?id=demo_ledger", headers=auth_hdr)
         assert "target.py" in det_after["files"]
         assert any(k.startswith("Solution/Lem_") for k in det_after["files"])
 
@@ -628,6 +629,7 @@ def test_phase6_studio_csrf_origin_host_and_tcb_protection(tmp_path: pathlib.Pat
     th = threading.Thread(target=srv.serve_forever, daemon=True)
     th.start()
     try:
+        assert _http_json(f"{base}/api/overview")[0] == 403
         # Missing CSRF token -> 403
         code, _ = _http_json(f"{base}/api/action", {"project_id": "demo", "action": "pin"})
         assert code == 403

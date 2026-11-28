@@ -223,6 +223,14 @@ class CommitAwareScheduler:
             return effective_avail >= min(w_gb * 0.65, max(0.5, snap.commit_limit_gb * 0.1))
         return (effective_avail - w_gb) >= self.config.reserve_commit_gb
 
+    def _pending_modules(self, modules: Sequence[str]) -> Set[str]:
+        # Timestamps help schedule work, but cannot certify every Lake input
+        # (toolchain, build options, external imports, or an equal-time edit).
+        # Ask Lake to validate the roots even when all local artifacts look fresh.
+        dependencies = {d for m in modules for d in self.dag.nodes[m].local_deps}
+        return {m for m in modules if self.config.force_rebuild or
+                not self.dag.nodes[m].olean_fresh or m not in dependencies}
+
     def simulate_plan(self, targets: Optional[Sequence[str]] = None) -> Dict[str, object]:
         """Estimate build schedule, concurrency tiers, and speedup without executing Lake."""
         sub = self.dag.reachable_subgraph(targets)
@@ -232,9 +240,7 @@ class CommitAwareScheduler:
         light_cap = max(1, min(self.config.max_workers, int(usable // max(0.2, self.dag.light_worker_gb))))
         medium_cap = max(1, min(self.config.max_workers, int(usable // max(0.5, self.dag.medium_worker_gb))))
 
-        pending = [
-            m for m in sub if self.config.force_rebuild or not self.dag.nodes[m].olean_fresh
-        ]
+        pending = self._pending_modules(sub)
         heavy_pending = [m for m in pending if self.dag.nodes[m].weight_class == "heavy"]
         medium_pending = [m for m in pending if self.dag.nodes[m].weight_class == "medium"]
         light_pending = [m for m in pending if self.dag.nodes[m].weight_class == "light"]
@@ -275,6 +281,7 @@ class CommitAwareScheduler:
         """Execute memory-aware topological Lake build for all pending reachable modules."""
         sub = self.dag.reachable_subgraph(targets)
         sub_set = set(sub)
+        pending_modules = self._pending_modules(sub)
         t0 = time.time()
 
         records: Dict[str, ModuleBuildRecord] = {}
@@ -284,7 +291,7 @@ class CommitAwareScheduler:
 
         for m in sub:
             node = self.dag.nodes[m]
-            if not self.config.force_rebuild and node.olean_fresh:
+            if m not in pending_modules:
                 done.add(m)
                 records[m] = ModuleBuildRecord(
                     module=m,
