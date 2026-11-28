@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-import datetime
+from dataclasses import dataclass, field, replace
+import tempfile
 import os
 import pathlib
 import re
@@ -171,9 +171,9 @@ def parse_shake_output(output: str) -> List[ShakeEdit]:
 
 
 def _backup_files(project_root: pathlib.Path, files: Sequence[pathlib.Path]) -> pathlib.Path:
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    bdir = project_root / ".lean-orch-backups" / ts
-    bdir.mkdir(parents=True, exist_ok=True)
+    parent = project_root / ".lean-orch-backups"
+    parent.mkdir(parents=True, exist_ok=True)
+    bdir = pathlib.Path(tempfile.mkdtemp(dir=parent))
     for fp in files:
         try:
             rel = fp.resolve().relative_to(project_root.resolve())
@@ -452,14 +452,22 @@ def run_lake_shake(
             )
             sched = CommitAwareScheduler(new_dag, cfg)
             summary = sched.run(targets)
-            if summary.failed_modules:
-                for failed_mod in summary.failed_modules:
-                    if failed_mod in new_dag.nodes:
-                        fp = new_dag.nodes[failed_mod].path
+            if returncode or summary.failed_modules:
+                # The failing consumer can be unchanged. Restore every changed source
+                # from this operation, then let Lake check the restored target graph.
+                for module in sub:
+                    fp = dag.nodes[module].path
+                    saved = backup_dir / fp.relative_to(dag.project_root)
+                    if not fp.exists() or fp.read_bytes() != saved.read_bytes():
                         if _restore_file(dag.project_root, backup_dir, fp):
-                            rolled_back.append(failed_mod)
-                after_rb = analyze_project(dag.project_root)
-                heavy_after = sum(1 for n in after_rb.nodes.values() if n.weight_class == "heavy")
+                            rolled_back.append(module)
+                restored = analyze_project(dag.project_root)
+                repair = CommitAwareScheduler(restored, replace(cfg, force_rebuild=True)).run(targets)
+                combined += f"\nVerification failed. Restored {len(rolled_back)} source files."
+                if repair.failed_modules:
+                    combined += f" Restored build failed: {repair.failed_modules}"
+                heavy_after = sum(n.weight_class == "heavy" for n in restored.nodes.values())
+                returncode = returncode or 1
 
     return ShakeResult(
         command=cmd,

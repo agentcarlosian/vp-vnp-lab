@@ -41,3 +41,5 @@ python -m lean_orch shake /path/to/lean-project --fix
 # 4. Full 2-phase pipeline (build -> shake -> verify)
 python -m lean_orch pipeline /path/to/lean-project --fix
 ```
+
+Incremental scheduling compares each module artifact with both its source and its local dependency artifacts. A separately rebuilt dependency invalidates older consumers transitively. Lake also checks the roots of the requested build even when local timestamps appear fresh. If import minimization fails verification, the orchestrator restores all changed sources in the backed-up target graph, checks the restored build, and returns a failure status for the rejected edit.

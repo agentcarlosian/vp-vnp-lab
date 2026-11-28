@@ -167,7 +167,7 @@ def cmd_shake(args: argparse.Namespace) -> int:
         if res.raw_output.strip():
             print("\n--- raw lake shake output ---")
             print(res.raw_output.strip()[:2500])
-    return 0 if res.returncode == 0 or res.edits else res.returncode
+    return res.returncode if args.fix or not res.edits else 0
 
 
 def cmd_pipeline(args: argparse.Namespace) -> int:
@@ -208,7 +208,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
             f"heavy={shake_res.heavy_before}->{shake_res.heavy_after} "
             f"rolled_back={len(shake_res.rolled_back_files)}"
         )
-    return 0
+    return shake_res.returncode if args.fix or not shake_res.edits else 0
 
 
 def build_parser() -> argparse.ArgumentParser:

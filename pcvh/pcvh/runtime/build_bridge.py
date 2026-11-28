@@ -95,7 +95,7 @@ def build_and_shake_project(
         scheduler_config=cfg,
     )
     return BuildAndShakeReport(
-        build_ok=(len(build_res.failed_modules) == 0),
+        build_ok=(not build_res.failed_modules and shake_res.returncode == 0),
         built_modules=build_res.built_modules,
         cached_modules=build_res.cached_modules,
         failed_modules=list(build_res.failed_modules),
